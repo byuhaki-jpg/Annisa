@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Loader2, Download, FileText } from "lucide-react";
+import { Loader2, Download, FileText, Share2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -215,16 +215,22 @@ export function ReportDownloadDialog({
     const [startDate, setStartDate] = useState(firstDay);
     const [endDate, setEndDate] = useState(today);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [pdfBlob, setPdfBlob] = useState<{ url: string; file: File; filename: string } | null>(null);
 
-    const handleDownload = async () => {
+    const handleGenerate = async () => {
         try {
             setIsDownloading(true);
             const data: any = await api.getExpensesReport(startDate, endDate);
             const doc = buildPDF(data, startDate, endDate);
             const filename = `Laporan_Kas_KostAnnisa_${startDate}_sd_${endDate}.pdf`;
-            doc.save(filename);
-            toast.success("Laporan PDF berhasil diunduh!");
-            onOpenChange(false);
+
+            // Convert to Blob instead of force downlod
+            const blob = doc.output('blob');
+            const file = new File([blob], filename, { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+
+            setPdfBlob({ url, file, filename });
+            toast.success("Laporan PDF berhasil dibuat!");
         } catch (err: any) {
             console.error("PDF Error:", err);
             toast.error(err.message || "Gagal membuat laporan PDF");
@@ -233,8 +239,16 @@ export function ReportDownloadDialog({
         }
     };
 
+    const handleOpenChange = (isOpen: boolean) => {
+        if (!isOpen) {
+            if (pdfBlob?.url) URL.revokeObjectURL(pdfBlob.url);
+            setPdfBlob(null);
+        }
+        onOpenChange(isOpen);
+    };
+
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
@@ -245,42 +259,96 @@ export function ReportDownloadDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex flex-col gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label>Dari Tanggal</Label>
-                            <Input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                            />
+                {!pdfBlob ? (
+                    <>
+                        <div className="flex flex-col gap-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label>Dari Tanggal</Label>
+                                    <Input
+                                        type="date"
+                                        value={startDate}
+                                        onChange={(e) => setStartDate(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label>Sampai Tanggal</Label>
+                                    <Input
+                                        type="date"
+                                        value={endDate}
+                                        onChange={(e) => setEndDate(e.target.value)}
+                                    />
+                                </div>
+                            </div>
                         </div>
-                        <div className="space-y-1.5">
-                            <Label>Sampai Tanggal</Label>
-                            <Input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                            />
+
+                        <DialogFooter>
+                            <Button
+                                variant="default"
+                                disabled={isDownloading}
+                                onClick={handleGenerate}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                {isDownloading ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <FileText className="w-4 h-4 mr-2" />
+                                )}
+                                Buat Laporan PDF
+                            </Button>
+                        </DialogFooter>
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center gap-4 py-6">
+                        <div className="h-14 w-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                            <CheckCircle2 className="w-8 h-8" />
+                        </div>
+                        <div className="space-y-1 text-center">
+                            <p className="font-semibold text-slate-800 text-lg">Laporan Siap!</p>
+                            <p className="text-sm text-slate-500 break-all px-4">{pdfBlob.filename}</p>
+                        </div>
+                        <div className="flex w-full gap-3 mt-4 px-2">
+                            <Button
+                                className="flex-1"
+                                variant="outline"
+                                onClick={() => {
+                                    const a = document.createElement("a");
+                                    a.href = pdfBlob.url;
+                                    a.download = pdfBlob.filename;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    toast.success("Berhasil mengunduh PDF");
+                                }}
+                            >
+                                <Download className="w-4 h-4 mr-2" /> Simpan
+                            </Button>
+                            <Button
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                onClick={async () => {
+                                    if (navigator.canShare && navigator.canShare({ files: [pdfBlob.file] })) {
+                                        try {
+                                            await navigator.share({
+                                                files: [pdfBlob.file],
+                                                title: "Laporan Kas Kost Annisa",
+                                                text: "Berikut lampiran Laporan Kas Kost Annisa."
+                                            });
+                                        } catch (err: any) {
+                                            if (err.name !== 'AbortError') {
+                                                console.error("Share error:", err);
+                                                toast.error("Gagal membagikan file.");
+                                            }
+                                        }
+                                    } else {
+                                        toast.error("Browser Anda tidak mendukung share file langsung. Silakan tap tombol Simpan lalu share secara manual.");
+                                    }
+                                }}
+                            >
+                                <Share2 className="w-4 h-4 mr-2" /> Bagikan
+                            </Button>
                         </div>
                     </div>
-                </div>
-
-                <DialogFooter>
-                    <Button
-                        variant="default"
-                        disabled={isDownloading}
-                        onClick={handleDownload}
-                        className="w-full bg-red-600 hover:bg-red-700"
-                    >
-                        {isDownloading ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                            <FileText className="w-4 h-4 mr-2" />
-                        )}
-                        Unduh Laporan PDF
-                    </Button>
-                </DialogFooter>
+                )}
             </DialogContent>
         </Dialog>
     );
