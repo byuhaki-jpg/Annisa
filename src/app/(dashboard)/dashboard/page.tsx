@@ -58,7 +58,7 @@ export default function DashboardPage() {
     } = dashboard as any;
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16 overflow-x-hidden">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Ringkasan</h2>
                 <div className="flex gap-2">
@@ -112,11 +112,11 @@ export default function DashboardPage() {
                         <div className="space-y-4">
                             {nunggak_tenants.map((t: any) => (
                                 <div key={t.tenant_id} className="flex justify-between items-center text-sm bg-white p-3 rounded border border-orange-100">
-                                    <div>
-                                        <p className="font-semibold text-slate-800">{t.name} (Kamar {t.room_no})</p>
+                                    <div className="min-w-0 flex-1 mr-2">
+                                        <p className="font-semibold text-slate-800 truncate">{t.name} (Kamar {t.room_no})</p>
                                         <p className="text-xs text-slate-500">Menunggak sejak {t.oldest_period}</p>
                                     </div>
-                                    <span className="font-bold text-rose-600">{formatCurrency(t.total_owed)}</span>
+                                    <span className="font-bold text-rose-600 shrink-0 text-sm">{formatCurrency(t.total_owed)}</span>
                                 </div>
                             ))}
                         </div>
@@ -166,27 +166,18 @@ export default function DashboardPage() {
                         {!unpaid_tenants || unpaid_tenants.length === 0 ? (
                             <div className="text-sm text-slate-500 italic py-4 text-center">Semua sudah ditagih & lunas (atau belum digenerate)</div>
                         ) : (
-                            <div className="w-full overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Penghuni</TableHead>
-                                            <TableHead>Kamar</TableHead>
-                                            <TableHead className="text-right">Jumlah</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {unpaid_tenants.map((inv: any) => (
-                                            <TableRow key={inv.invoice_id}>
-                                                <TableCell className="font-medium whitespace-nowrap">{inv.name}</TableCell>
-                                                <TableCell className="whitespace-nowrap">Kmr {inv.room_no}</TableCell>
-                                                <TableCell className="text-right text-rose-600 font-medium whitespace-nowrap">
-                                                    {formatCurrency(inv.amount)}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                            <div className="space-y-2">
+                                {unpaid_tenants.map((inv: any) => (
+                                    <div key={inv.invoice_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <div className="min-w-0 flex-1 mr-2">
+                                            <p className="font-medium text-slate-800 text-sm truncate">{inv.name}</p>
+                                            <p className="text-xs text-slate-500">Kmr {inv.room_no}</p>
+                                        </div>
+                                        <span className="font-bold text-rose-600 text-sm shrink-0">
+                                            {formatCurrency(inv.amount)}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
                         )}
                         {unpaid_tenants?.length > 0 && (
@@ -208,27 +199,18 @@ export default function DashboardPage() {
                         {!paid_tenants || paid_tenants.length === 0 ? (
                             <div className="text-sm text-slate-500 italic py-4 text-center">Belum ada pembayaran lunas</div>
                         ) : (
-                            <div className="w-full overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Penghuni</TableHead>
-                                            <TableHead>Kamar</TableHead>
-                                            <TableHead className="text-right">Tanggal Bayar</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {paid_tenants.map((inv: any) => (
-                                            <TableRow key={inv.invoice_id}>
-                                                <TableCell className="font-medium whitespace-nowrap">{inv.name}</TableCell>
-                                                <TableCell className="whitespace-nowrap">Kmr {inv.room_no}</TableCell>
-                                                <TableCell className="text-right text-slate-500 text-sm whitespace-nowrap">
-                                                    {inv.paid_at ? format(new Date(inv.paid_at), "dd MMM, HH:mm", { locale: id }) : "-"}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                            <div className="space-y-2">
+                                {paid_tenants.map((inv: any) => (
+                                    <div key={inv.invoice_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <div className="min-w-0 flex-1 mr-2">
+                                            <p className="font-medium text-slate-800 text-sm truncate">{inv.name}</p>
+                                            <p className="text-xs text-slate-500">Kmr {inv.room_no}</p>
+                                        </div>
+                                        <span className="text-slate-500 text-xs shrink-0">
+                                            {inv.paid_at ? format(new Date(inv.paid_at), "dd MMM, HH:mm", { locale: id }) : "-"}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </CardContent>
