@@ -18,7 +18,7 @@ preview_bucket_name = "kost-annisa-files-preview"
 
 # ── Environment Variables (non-secret) ───────────
 [vars]
-APP_ORIGINS = "https://kostannisa.my.id,https://kosannisa.tbs.my.id,http://localhost:3000"
+APP_ORIGINS = "https://kostannisa.my.id,https://kosannisa.tbs.my.id,http://localhost:3000,http://localhost"
 PROPERTY_ID = "prop_kostannisa"
 # Secrets moved to `wrangler secret put`:
 #   RESEND_API_KEY
