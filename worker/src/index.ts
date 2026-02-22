@@ -8,7 +8,7 @@ import { cors } from 'hono/cors';
 import { authMiddleware, requireRole, hashPassword, type AuthUser, type AuthRole } from './auth';
 import { sign } from 'hono/jwt';
 import { sendResetPasswordEmail } from './email';
-import { handleTelegramUpdate } from './telegram';
+import { handleTelegramUpdate, analyzeReceiptImage } from './telegram';
 import {
     getAllRooms,
     getAllTenants,
@@ -823,6 +823,37 @@ app.patch('/api/expenses/:id', requireRole('admin_utama', 'admin'), async (c) =>
     vals.push(expenseId);
     await execute(c.env.DB, `UPDATE expenses SET ${sets.join(', ')} WHERE id = ?`, ...vals);
     return c.json({ ok: true });
+});
+
+// ── AI Scanner API ────────────────────────────────
+app.post('/api/expenses/scan-ai', async (c) => {
+    try {
+        const body = await c.req.parseBody();
+        const file = body['file'] as File;
+        if (!file) {
+            return c.json({ error: 'Tidak ada gambar yang diupload' }, 400);
+        }
+
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        const base64Str = btoa(binary);
+
+        const settings: any = await getSettings(c.env.DB, pid(c));
+        const groqKey = c.env.GROQ_API_KEY || settings.groq_api_key;
+
+        if (!groqKey) {
+            return c.json({ error: 'Groq API Key belum diconfigure di pengaturan web.' }, 400);
+        }
+
+        const result = await analyzeReceiptImage(groqKey, base64Str);
+        return c.json(result);
+    } catch (err: any) {
+        return c.json({ error: err.message || 'Gagal menganalisa nota' }, 500);
+    }
 });
 
 // ── Delete expense (admin only) ───────────────────

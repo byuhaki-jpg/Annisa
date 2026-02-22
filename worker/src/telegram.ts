@@ -148,9 +148,15 @@ async function analyzeWithGroqVision(apiKey: string, imageBase64: string): Promi
     return extractTransaction(content);
 }
 
-// ── Receipt image analyzer ───────────────────────
+export interface ParsedTransaction {
+    type: 'expense' | 'income';
+    category: string;
+    amount: number;
+    notes: string;
+    confidence?: string;
+}
 
-async function analyzeReceiptImage(groqKey: string, imageBase64: string): Promise<ParsedTransaction> {
+export async function analyzeReceiptImage(groqKey: string, imageBase64: string): Promise<ParsedTransaction> {
     if (groqKey) {
         return await analyzeWithGroqVision(groqKey, imageBase64);
     }
@@ -166,13 +172,6 @@ async function parseTextMessage(groqKey: string, text: string): Promise<ParsedTr
 
 // ── Types ────────────────────────────────────────
 
-interface ParsedTransaction {
-    type: 'income' | 'expense';
-    category: string;
-    amount: number;
-    notes: string;
-    confidence?: string;
-}
 
 interface TelegramDeps {
     botToken: string;

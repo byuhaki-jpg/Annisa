@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, DoorOpen, FileText, Receipt, Settings, BarChart2, Shield } from "lucide-react";
+import { LayoutDashboard, Users, DoorOpen, FileText, Receipt, Settings, BarChart2, Shield, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
 
@@ -18,7 +18,7 @@ const dockItems = [
 
 export function MobileDock() {
     const pathname = usePathname();
-    const { role } = useAppStore();
+    const { role, setScannerOpen } = useAppStore();
 
     const items = [...dockItems];
     if (role === 'admin_utama') {
@@ -50,7 +50,48 @@ export function MobileDock() {
                             WebkitOverflowScrolling: "touch",
                         }}
                     >
-                        {items.map((item) => {
+                        {items.slice(0, Math.ceil(items.length / 2)).map((item) => {
+                            const isActive = pathname.startsWith(item.href);
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={item.href}
+                                    className={cn(
+                                        "flex flex-col items-center justify-center min-w-[56px] px-2.5 py-1.5 rounded-xl transition-all duration-200 select-none shrink-0",
+                                        "active:scale-[0.85]",
+                                        isActive
+                                            ? "bg-slate-800 text-white shadow-md shadow-slate-800/30"
+                                            : "text-slate-500 hover:bg-black/5 hover:text-slate-700"
+                                    )}
+                                >
+                                    <item.icon className={cn(
+                                        "w-[18px] h-[18px] mb-0.5 transition-transform duration-200",
+                                        isActive && "drop-shadow-sm"
+                                    )} />
+                                    <span className={cn(
+                                        "text-[9px] font-semibold leading-tight tracking-tight",
+                                        isActive ? "text-white/90" : "text-slate-500"
+                                    )}>
+                                        {item.name}
+                                    </span>
+                                </Link>
+                            );
+                        })}
+
+                        {/* Middle Scanner Button */}
+                        <div className="flex flex-col items-center justify-center px-1 shrink-0 relative">
+                            <button
+                                onClick={() => setScannerOpen(true)}
+                                className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-500/40 flex items-center justify-center transition-all duration-200 active:scale-90 -mt-6 border-4 border-white transform hover:-translate-y-1"
+                            >
+                                <ScanLine className="w-6 h-6" />
+                            </button>
+                            <span className="text-[9px] font-semibold text-slate-600 mt-1 pb-0.5 leading-tight tracking-tight">
+                                Scan Nota
+                            </span>
+                        </div>
+
+                        {items.slice(Math.ceil(items.length / 2)).map((item) => {
                             const isActive = pathname.startsWith(item.href);
                             return (
                                 <Link

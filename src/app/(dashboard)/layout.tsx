@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { MobileDock } from "@/components/layout/mobile-dock";
 import { Suspense } from "react";
+import { AIScannerModal } from "@/components/layout/ai-scanner";
 
 export default function DashboardLayout({
     children,
@@ -22,6 +23,7 @@ export default function DashboardLayout({
                 </main>
             </div>
             <MobileDock />
+            <AIScannerModal />
         </div>
     );
 }

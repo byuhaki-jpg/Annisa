@@ -23,6 +23,8 @@ type AppContextType = {
     deleteExpense: (id: string) => void;
     settings: Settings;
     updateSettings: (settings: Partial<Settings>) => void;
+    isScannerOpen: boolean;
+    setScannerOpen: (open: boolean) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -34,6 +36,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
     const [expenses, setExpenses] = useState<Expense[]>(mockExpenses);
     const [settings, setSettings] = useState<Settings>(mockSettings);
+    const [isScannerOpen, setScannerOpen] = useState(false);
 
     const addTenant = (tenant: Omit<Tenant, 'id'>) => {
         setTenants([...tenants, { ...tenant, id: `t${Date.now()}` }]);
@@ -86,7 +89,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             rooms,
             invoices, markInvoicePaid, addInvoice, updateInvoice,
             expenses, addExpense, updateExpense, confirmExpense, deleteExpense,
-            settings, updateSettings
+            settings, updateSettings,
+            isScannerOpen, setScannerOpen
         }}>
             {children}
         </AppContext.Provider>

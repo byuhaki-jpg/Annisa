@@ -145,6 +145,28 @@ export const api = {
         }
     },
 
+    scanNotaAI: async (file: File): Promise<{ type: string; category: string; amount: number; notes: string }> => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        let token = '';
+        if (typeof window !== 'undefined') {
+            token = localStorage.getItem('auth_token') || '';
+        }
+
+        const res = await fetch(`${API_BASE_URL}/expenses/scan-ai`, {
+            method: 'POST',
+            body: formData,
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Gagal scan nota AI' }));
+            throw new Error(err.error || 'Terjadi kesalahan sistem');
+        }
+        return res.json();
+    },
+
     /**
      * Upload file to Google Drive via the worker's Apps Script proxy.
      * Returns the shareable Google Drive URL.
