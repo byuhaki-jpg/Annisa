@@ -837,8 +837,10 @@ app.post('/api/expenses/scan-ai', async (c) => {
         const buffer = await file.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
+        const chunkSize = 8192;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            // @ts-ignore
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
         }
         const base64Str = btoa(binary);
 
