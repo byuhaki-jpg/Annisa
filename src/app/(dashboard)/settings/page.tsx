@@ -60,6 +60,9 @@ export default function SettingsPage() {
         setIntInit(true);
     }
 
+    // ── Security state ────────────────────────────
+    const [newPassword, setNewPassword] = useState("");
+
     // ── Mutations ──────────────────────────────────
     const bulkRoomMutation = useMutation({
         mutationFn: (r: number) => api.bulkUpdateRoomRate(r),
@@ -104,12 +107,29 @@ export default function SettingsPage() {
         onError: (err: any) => toast.error(err.message || "Gagal menyimpan Google Sheets"),
     });
 
+    const passwordMutation = useMutation({
+        mutationFn: (password: string) => api.changePassword(password),
+        onSuccess: () => {
+            setNewPassword("");
+            toast.success("Password berhasil diubah");
+        },
+        onError: (err: any) => toast.error(err.message || "Gagal mengubah password"),
+    });
+
     // ── Handlers ───────────────────────────────────
     const handleSavePrimary = () => {
         primaryMutation.mutate({
             default_monthly_rate: Number(rate) || 0,
             default_deposit: Number(deposit) || 0,
         });
+    };
+
+    const handleSavePassword = () => {
+        if (!newPassword || newPassword.length < 6) {
+            toast.error("Password minimal 6 karakter");
+            return;
+        }
+        passwordMutation.mutate(newPassword);
     };
 
     const handleSaveAI = () => {
@@ -222,6 +242,37 @@ export default function SettingsPage() {
                                 <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-400" />
                             ) : null}
                             Simpan Pengaturan
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* ── Keamanan Akun ── */}
+                <Card className="shadow-sm border-slate-200">
+                    <CardHeader>
+                        <CardTitle>Keamanan Akun</CardTitle>
+                        <CardDescription>
+                            Ubah password untuk login ke dashboard.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                        <div className="space-y-2">
+                            <Label htmlFor="newPassword">Password Baru</Label>
+                            <Input
+                                id="newPassword"
+                                type="password"
+                                placeholder="Minimal 6 karakter"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                            />
+                        </div>
+
+                        <Button onClick={handleSavePassword} disabled={passwordMutation.isPending}>
+                            {passwordMutation.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : passwordMutation.isSuccess ? (
+                                <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-400" />
+                            ) : null}
+                            Ganti Password
                         </Button>
                     </CardContent>
                 </Card>

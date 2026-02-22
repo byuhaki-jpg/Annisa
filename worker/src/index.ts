@@ -261,6 +261,17 @@ app.get('/api/me', (c) => {
     return c.json({ email: user.email, role: user.role, name: user.name });
 });
 
+app.put('/api/me/password', async (c) => {
+    const user = c.get('user');
+    const body = await c.req.json().catch(() => ({}));
+    if (!body.password || body.password.length < 6) {
+        return c.json({ error: { code: 'VALIDATION', message: 'Password minimal 6 karakter' } }, 400);
+    }
+    const hash = await hashPassword(body.password);
+    await execute(c.env.DB, 'UPDATE users SET password_hash = ? WHERE id = ?', hash, user.userId);
+    return c.json({ ok: true, message: 'Password berhasil diubah' });
+});
+
 // ── A.1) User Management (admin_utama only) ────────
 app.get('/api/users', requireRole('admin_utama'), async (c) => {
     const users = await queryAll(c.env.DB, 'SELECT id, email, name, role, is_active, created_at FROM users ORDER BY created_at DESC');

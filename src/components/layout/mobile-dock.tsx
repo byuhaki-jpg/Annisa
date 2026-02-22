@@ -5,9 +5,10 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, DoorOpen, FileText, Receipt, Settings, BarChart2, Shield, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
+import { useEffect, useRef, useState } from "react";
 
 const dockItems = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Dash", href: "/dashboard", icon: LayoutDashboard },
     { name: "Tagihan", href: "/invoices", icon: FileText },
     { name: "Kas", href: "/expenses", icon: Receipt },
     { name: "Laporan", href: "/report", icon: BarChart2 },
@@ -19,99 +20,66 @@ const dockItems = [
 export function MobileDock() {
     const pathname = usePathname();
     const { role, setScannerOpen } = useAppStore();
+    const scrollRef = useRef<HTMLDivElement>(null);
 
     const items = [...dockItems];
     if (role === 'admin_utama') {
         items.push({ name: "Tim", href: "/users", icon: Shield });
     }
 
-    const leftItems = items.slice(0, Math.ceil(items.length / 2));
-    const rightItems = items.slice(Math.ceil(items.length / 2));
+    const renderItem = (item: any) => {
+        const isActive = pathname.startsWith(item.href);
+        return (
+            <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                    "flex flex-col items-center justify-center min-w-[70px] shrink-0 h-16 transition-all duration-300 active:scale-95 group",
+                    isActive ? "text-blue-500" : "text-slate-800"
+                )}
+            >
+                <div className={cn(
+                    "relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300",
+                    isActive ? "bg-blue-50" : "group-hover:bg-slate-100"
+                )}>
+                    <item.icon className={cn(
+                        "w-[26px] h-[26px] transition-transform",
+                        isActive ? "stroke-[2.5px]" : "stroke-[1.5px]"
+                    )} />
+                </div>
+                <span className={cn(
+                    "text-[12px] font-medium tracking-wide mt-0.5",
+                    isActive ? "font-bold" : ""
+                )}>
+                    {item.name}
+                </span>
+            </Link>
+        );
+    };
 
     return (
         <div
-            className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none"
+            className="md:hidden fixed bottom-6 left-0 right-0 z-50 flex flex-col items-center pointer-events-none"
             style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         >
-            {/* Floating pill dock */}
-            <div
-                className="pointer-events-auto w-full mx-2 rounded-t-2xl border border-b-0 border-white/40 shadow-[0_-4px_30px_rgba(0,0,0,0.12)]"
-                style={{
-                    background: "rgba(255, 255, 255, 0.82)",
-                    backdropFilter: "blur(24px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                }}
-            >
-                <nav className="flex items-end justify-around px-1 pt-2 pb-3">
-                    {leftItems.map((item) => {
-                        const isActive = pathname.startsWith(item.href);
-                        return (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                className={cn(
-                                    "flex flex-col items-center justify-center min-w-[48px] px-1.5 py-1 rounded-xl transition-all duration-200 select-none",
-                                    "active:scale-[0.85]",
-                                    isActive
-                                        ? "bg-slate-800 text-white shadow-md shadow-slate-800/30"
-                                        : "text-slate-500 hover:bg-black/5 hover:text-slate-700"
-                                )}
-                            >
-                                <item.icon className={cn(
-                                    "w-5 h-5 mb-0.5 transition-transform duration-200",
-                                    isActive && "drop-shadow-sm"
-                                )} />
-                                <span className={cn(
-                                    "text-[10px] font-semibold leading-tight",
-                                    isActive ? "text-white/90" : "text-slate-500"
-                                )}>
-                                    {item.name}
-                                </span>
-                            </Link>
-                        );
-                    })}
+            {/* Scan FAB Floating on top right somewhat */}
+            <div className="absolute -top-16 right-4 pointer-events-auto">
+                <button
+                    onClick={() => setScannerOpen(true)}
+                    className="w-14 h-14 rounded-full bg-[#1b9aee] text-white flex items-center justify-center shadow-lg active:scale-90 transition-all duration-200"
+                >
+                    <ScanLine className="w-[30px] h-[30px] stroke-[2px]" />
+                </button>
+            </div>
 
-                    {/* Middle Scanner Button */}
-                    <div className="flex flex-col items-center justify-end px-1 relative">
-                        <button
-                            onClick={() => setScannerOpen(true)}
-                            className="w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-xl shadow-blue-500/40 flex items-center justify-center transition-all duration-200 active:scale-90 -mt-5 border-[3px] border-white transform hover:-translate-y-1"
-                        >
-                            <ScanLine className="w-7 h-7" />
-                        </button>
-                        <span className="text-[10px] font-semibold text-indigo-600 mt-1 leading-tight">
-                            Scan
-                        </span>
-                    </div>
-
-                    {rightItems.map((item) => {
-                        const isActive = pathname.startsWith(item.href);
-                        return (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                className={cn(
-                                    "flex flex-col items-center justify-center min-w-[48px] px-1.5 py-1 rounded-xl transition-all duration-200 select-none",
-                                    "active:scale-[0.85]",
-                                    isActive
-                                        ? "bg-slate-800 text-white shadow-md shadow-slate-800/30"
-                                        : "text-slate-500 hover:bg-black/5 hover:text-slate-700"
-                                )}
-                            >
-                                <item.icon className={cn(
-                                    "w-5 h-5 mb-0.5 transition-transform duration-200",
-                                    isActive && "drop-shadow-sm"
-                                )} />
-                                <span className={cn(
-                                    "text-[10px] font-semibold leading-tight",
-                                    isActive ? "text-white/90" : "text-slate-500"
-                                )}>
-                                    {item.name}
-                                </span>
-                            </Link>
-                        );
-                    })}
-                </nav>
+            {/* Main Pill Navbar */}
+            <div className="pointer-events-auto mx-4 bg-white/95 backdrop-blur-md rounded-[32px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-slate-100/50 max-w-[95vw] overflow-hidden">
+                <div
+                    ref={scrollRef}
+                    className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory flex-nowrap items-center px-2 h-[88px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                    {items.map(renderItem)}
+                </div>
             </div>
         </div>
     );

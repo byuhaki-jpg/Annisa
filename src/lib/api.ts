@@ -51,6 +51,7 @@ export const api = {
     login: (data: any) => fetchApi('/login', { method: 'POST', body: JSON.stringify(data) }),
     forgotPassword: (email: string) => fetchApi('/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
     resetPassword: (token: string, password: string) => fetchApi('/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
+    changePassword: (password: string) => fetchApi('/me/password', { method: 'PUT', body: JSON.stringify({ password }) }),
     getMe: () => fetchApi('/me'),
 
     // Users (admin_utama)
