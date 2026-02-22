@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { Role } from "@/lib/types";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff, Building2, Lock, Mail } from "lucide-react";
+import { Loader2, Eye, EyeOff, Building2, Lock, Mail, Fingerprint } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,6 +17,13 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
+import {
+    isBiometricAvailable,
+    isBiometricEnabled,
+    authenticateWithBiometric,
+    saveCredentials,
+    getSavedCredentials,
+} from "@/lib/biometric";
 
 function ForgotPasswordForm({ onClose }: { onClose: () => void }) {
     const [forgotEmail, setForgotEmail] = useState("");
@@ -105,35 +112,109 @@ export default function LoginPage() {
     const [forgotOpen, setForgotOpen] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
 
-    // Load saved email on mount
+    // Biometric states
+    const [bioAvailable, setBioAvailable] = useState(false);
+    const [bioEnabled, setBioEnabled] = useState(false);
+    const [bioLoading, setBioLoading] = useState(false);
+    const [bioPromptOpen, setBioPromptOpen] = useState(false);
+    const [pendingCred, setPendingCred] = useState<{ email: string; password: string } | null>(null);
+
+    // Load saved email + check biometric on mount
     useEffect(() => {
         const savedEmail = localStorage.getItem("remember_email");
         if (savedEmail) {
             setEmail(savedEmail);
             setRememberMe(true);
         }
+
+        // Check biometric availability
+        (async () => {
+            const avail = await isBiometricAvailable();
+            setBioAvailable(avail);
+            if (avail) {
+                const enabled = await isBiometricEnabled();
+                setBioEnabled(enabled);
+            }
+        })();
     }, []);
+
+    // Finish login (shared between manual & biometric)
+    const finishLogin = useCallback(async (loginEmail: string, loginPassword: string, skipBioPrompt = false) => {
+        const res: any = await api.login({ email: loginEmail, password: loginPassword });
+        localStorage.setItem("auth_token", res.token);
+        if (rememberMe) {
+            localStorage.setItem("remember_email", loginEmail);
+        } else {
+            localStorage.removeItem("remember_email");
+        }
+        setRole(res.role as Role);
+
+        // If biometric is available but NOT yet enabled, prompt user
+        if (!skipBioPrompt && bioAvailable && !bioEnabled) {
+            setPendingCred({ email: loginEmail, password: loginPassword });
+            setBioPromptOpen(true);
+            return; // Don't navigate yet, wait for prompt
+        }
+
+        toast.success("Login berhasil!");
+        router.push("/dashboard");
+    }, [rememberMe, bioAvailable, bioEnabled, setRole, router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
         try {
-            const res: any = await api.login({ email, password });
-            localStorage.setItem("auth_token", res.token);
-            if (rememberMe) {
-                localStorage.setItem("remember_email", email);
-            } else {
-                localStorage.removeItem("remember_email");
-            }
-            setRole(res.role as Role);
-            toast.success("Login berhasil!");
-            router.push("/dashboard");
+            await finishLogin(email, password);
         } catch (err: any) {
             toast.error(err.message || "Gagal login. Periksa email dan password.");
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Biometric quick login
+    const handleBiometricLogin = async () => {
+        setBioLoading(true);
+        try {
+            const ok = await authenticateWithBiometric();
+            if (!ok) {
+                toast.error("Autentikasi sidik jari dibatalkan.");
+                return;
+            }
+            const cred = await getSavedCredentials();
+            if (!cred) {
+                toast.error("Kredensial tersimpan tidak ditemukan. Silakan login manual.");
+                return;
+            }
+            await finishLogin(cred.email, cred.password, true);
+            toast.success("Login berhasil!");
+            router.push("/dashboard");
+        } catch (err: any) {
+            toast.error(err.message || "Login biometrik gagal. Silakan gunakan email & password.");
+        } finally {
+            setBioLoading(false);
+        }
+    };
+
+    // Handle user response to biometric opt-in prompt
+    const handleBioPromptAccept = async () => {
+        if (pendingCred) {
+            await saveCredentials(pendingCred);
+            setBioEnabled(true);
+            toast.success("Sidik jari aktif! Login berikutnya cukup pakai sidik jari.");
+        }
+        setBioPromptOpen(false);
+        setPendingCred(null);
+        toast.success("Login berhasil!");
+        router.push("/dashboard");
+    };
+
+    const handleBioPromptDecline = () => {
+        setBioPromptOpen(false);
+        setPendingCred(null);
+        toast.success("Login berhasil!");
+        router.push("/dashboard");
     };
 
     return (
@@ -250,6 +331,27 @@ export default function LoginPage() {
                             )}
                         </Button>
                     </form>
+
+                    {/* Biometric Login Button */}
+                    {bioAvailable && bioEnabled && (
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                            <button
+                                type="button"
+                                onClick={handleBiometricLogin}
+                                disabled={bioLoading}
+                                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white/5 border border-white/15 hover:bg-white/10 hover:border-white/25 transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
+                            >
+                                {bioLoading ? (
+                                    <Loader2 className="w-5 h-5 text-blue-300 animate-spin" />
+                                ) : (
+                                    <Fingerprint className="w-5 h-5 text-blue-400" />
+                                )}
+                                <span className="text-sm font-medium text-blue-100">
+                                    {bioLoading ? "Memverifikasi..." : "Login dengan Sidik Jari"}
+                                </span>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
@@ -262,6 +364,34 @@ export default function LoginPage() {
             <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
                 <DialogContent className="sm:max-w-[400px]">
                     <ForgotPasswordForm onClose={() => setForgotOpen(false)} />
+                </DialogContent>
+            </Dialog>
+
+            {/* Biometric Opt-in Prompt */}
+            <Dialog open={bioPromptOpen} onOpenChange={() => { }}>
+                <DialogContent className="sm:max-w-[380px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Fingerprint className="w-5 h-5 text-blue-600" /> Aktifkan Sidik Jari?
+                        </DialogTitle>
+                        <DialogDescription>
+                            Ingin login lebih cepat? Aktifkan login dengan sidik jari agar Anda tidak perlu mengetik email dan password lagi.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="rounded-lg bg-blue-50 border border-blue-100 p-4 text-sm text-blue-800">
+                        <p className="font-medium mb-1">🔐 Keamanan:</p>
+                        <p className="text-blue-700 text-xs leading-relaxed">
+                            Kredensial Anda disimpan secara aman di perangkat ini dan hanya bisa diakses setelah verifikasi sidik jari berhasil.
+                        </p>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={handleBioPromptDecline}>
+                            Nanti Saja
+                        </Button>
+                        <Button onClick={handleBioPromptAccept} className="bg-blue-600 hover:bg-blue-700">
+                            <Fingerprint className="w-4 h-4 mr-2" /> Ya, Aktifkan
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
