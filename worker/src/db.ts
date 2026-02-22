@@ -72,6 +72,18 @@ export async function getExpensesForPeriod(db: D1Database, propertyId: string, p
     );
 }
 
+export async function getExpensesForDateRange(db: D1Database, propertyId: string, startDate: string, endDate: string) {
+    return queryAll(
+        db,
+        `SELECT * FROM expenses
+     WHERE property_id = ? AND expense_date >= ? AND expense_date <= ?
+     ORDER BY expense_date DESC`,
+        propertyId,
+        startDate,
+        endDate
+    );
+}
+
 export async function getDashboard(db: D1Database, propertyId: string, period: string) {
     // Total kas income for period (from expenses table, type='income')
     const income = await queryOne<{ total: number }>(

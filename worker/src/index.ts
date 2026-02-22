@@ -14,6 +14,7 @@ import {
     getAllTenants,
     getInvoicesForPeriod,
     getExpensesForPeriod,
+    getExpensesForDateRange,
     getDashboard,
     getNextInvoiceSeq,
     getSettings,
@@ -675,6 +676,18 @@ app.get('/api/expenses', async (c) => {
     const total_expense = expenses.filter((e: any) => e.status === 'confirmed' && e.type === 'expense').reduce((s: number, e: any) => s + e.amount, 0);
     const total_income = expenses.filter((e: any) => e.status === 'confirmed' && e.type === 'income').reduce((s: number, e: any) => s + e.amount, 0);
     return c.json({ period, total_expense, total_income, expenses });
+});
+
+app.get('/api/expenses/report', async (c) => {
+    const start = c.req.query('start');
+    const end = c.req.query('end');
+    if (!start || !end) {
+        return c.json({ error: { code: 'VALIDATION', message: 'start and end dates are required' } }, 400);
+    }
+    const expenses = await getExpensesForDateRange(c.env.DB, pid(c), start, end);
+    const total_expense = expenses.filter((e: any) => e.status === 'confirmed' && e.type === 'expense').reduce((s: number, e: any) => s + e.amount, 0);
+    const total_income = expenses.filter((e: any) => e.status === 'confirmed' && e.type === 'income').reduce((s: number, e: any) => s + e.amount, 0);
+    return c.json({ period: `${start} to ${end}`, total_expense, total_income, expenses });
 });
 
 app.post('/api/expenses', async (c) => {

@@ -5,12 +5,13 @@ import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { useForm, Controller } from "react-hook-form";
 import { toast } from "sonner";
-import { PlusCircle, Pencil, Loader2, Trash2, AlertTriangle, Paperclip, Eye, Upload, X, FileImage } from "lucide-react";
+import { PlusCircle, Pencil, Loader2, Trash2, AlertTriangle, Paperclip, Eye, Upload, X, FileImage, Download } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 import { api } from "@/lib/api";
+import { ReportDownloadDialog } from "./report-dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -199,6 +200,7 @@ export default function ExpensesPage() {
     const queryClient = useQueryClient();
 
     const [modalOpen, setModalOpen] = useState(false);
+    const [reportModalOpen, setReportModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
     const [pendingKey, setPendingKey] = useState<string>("");   // receipt key held during form
@@ -315,9 +317,14 @@ export default function ExpensesPage() {
                     <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Kas Operasional</h2>
                     <p className="text-slate-500 mt-1 sm:mt-2 text-sm">Daftar Pemasukan dan Pengeluaran (Listrik, Perbaikan, Modal Kos, dsb)</p>
                 </div>
-                <Button onClick={openAddModal}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Catat Kas
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setReportModalOpen(true)}>
+                        <Download className="mr-2 h-4 w-4" /> Laporan PDF
+                    </Button>
+                    <Button onClick={openAddModal}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Catat Kas
+                    </Button>
+                </div>
             </div>
 
             {/* Total */}
@@ -617,6 +624,9 @@ export default function ExpensesPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* ── Report Download Modal ── */}
+            <ReportDownloadDialog open={reportModalOpen} onOpenChange={setReportModalOpen} />
         </div>
     );
 }

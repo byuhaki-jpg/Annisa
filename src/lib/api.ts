@@ -85,6 +85,7 @@ export const api = {
 
     // Expenses
     getExpenses: (period: string) => fetchApi(`/expenses?period=${period}`),
+    getExpensesReport: (start: string, end: string) => fetchApi(`/expenses/report?start=${start}&end=${end}`),
     createExpense: (data: any) => fetchApi('/expenses', { method: 'POST', body: JSON.stringify(data) }),
     updateExpense: (id: string, data: any) => fetchApi(`/expenses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     deleteExpense: (id: string) => fetchApi(`/expenses/${id}`, { method: 'DELETE' }),
