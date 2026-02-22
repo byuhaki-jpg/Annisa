@@ -333,23 +333,30 @@ export default function LoginPage() {
                     </form>
 
                     {/* Biometric Login Button */}
-                    {bioAvailable && bioEnabled && (
+                    {bioAvailable && (
                         <div className="mt-4 pt-4 border-t border-white/10">
-                            <button
-                                type="button"
-                                onClick={handleBiometricLogin}
-                                disabled={bioLoading}
-                                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white/5 border border-white/15 hover:bg-white/10 hover:border-white/25 transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
-                            >
-                                {bioLoading ? (
-                                    <Loader2 className="w-5 h-5 text-blue-300 animate-spin" />
-                                ) : (
-                                    <Fingerprint className="w-5 h-5 text-blue-400" />
-                                )}
-                                <span className="text-sm font-medium text-blue-100">
-                                    {bioLoading ? "Memverifikasi..." : "Login dengan Sidik Jari"}
-                                </span>
-                            </button>
+                            {bioEnabled ? (
+                                <button
+                                    type="button"
+                                    onClick={handleBiometricLogin}
+                                    disabled={bioLoading}
+                                    className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white/5 border border-white/15 hover:bg-white/10 hover:border-white/25 transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
+                                >
+                                    {bioLoading ? (
+                                        <Loader2 className="w-5 h-5 text-blue-300 animate-spin" />
+                                    ) : (
+                                        <Fingerprint className="w-5 h-5 text-blue-400" />
+                                    )}
+                                    <span className="text-sm font-medium text-blue-100">
+                                        {bioLoading ? "Memverifikasi..." : "Login dengan Sidik Jari"}
+                                    </span>
+                                </button>
+                            ) : (
+                                <div className="flex items-center justify-center gap-2 py-2 text-blue-200/40">
+                                    <Fingerprint className="w-4 h-4" />
+                                    <span className="text-xs">Login manual dulu untuk mengaktifkan sidik jari</span>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -39,21 +39,19 @@ const PREF_KEY_ENABLED = 'biometric_enabled';
 
 /**
  * Check if the device supports biometric auth (fingerprint / face).
+ * Returns true if the hardware is available AND the user has enrolled biometry.
  */
 export async function isBiometricAvailable(): Promise<boolean> {
     try {
         const ok = await loadPlugins();
         if (!ok) return false;
-        await BiometricAuth.checkBiometry();
-        const result = (BiometricAuth as any).biometryResult;
-        // If biometryResult is not available, try alternative check
-        if (result) {
-            return result.isAvailable === true;
-        }
-        // Fallback: try to check via checkBiometry return value
-        const check = await BiometricAuth.checkBiometry();
-        return check?.isAvailable === true;
-    } catch {
+
+        // checkBiometry() returns Promise<CheckBiometryResult>
+        // with { isAvailable: boolean, ... }
+        const result = await BiometricAuth.checkBiometry();
+        return result?.isAvailable === true;
+    } catch (err) {
+        console.warn('[Biometric] checkBiometry error:', err);
         return false;
     }
 }
@@ -86,7 +84,8 @@ export async function authenticateWithBiometric(): Promise<boolean> {
             allowDeviceCredential: true,
         });
         return true;
-    } catch {
+    } catch (err) {
+        console.warn('[Biometric] authenticate error:', err);
         return false;
     }
 }
