@@ -6,6 +6,9 @@ import { Loader2, Download, FileText, Share2, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -311,14 +314,35 @@ export function ReportDownloadDialog({
                             <Button
                                 className="flex-1"
                                 variant="outline"
-                                onClick={() => {
-                                    const a = document.createElement("a");
-                                    a.href = pdfBlob.url;
-                                    a.download = pdfBlob.filename;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                    toast.success("Berhasil mengunduh PDF");
+                                onClick={async () => {
+                                    try {
+                                        if (Capacitor.isNativePlatform()) {
+                                            // Native: simpan ke folder Downloads via Capacitor Filesystem
+                                            const reader = new FileReader();
+                                            reader.onloadend = async () => {
+                                                const base64Data = (reader.result as string).split(',')[1];
+                                                await Filesystem.writeFile({
+                                                    path: pdfBlob.filename,
+                                                    data: base64Data,
+                                                    directory: Directory.Documents,
+                                                });
+                                                toast.success(`PDF disimpan di folder Documents/${pdfBlob.filename}`);
+                                            };
+                                            reader.readAsDataURL(pdfBlob.file);
+                                        } else {
+                                            // Web fallback
+                                            const a = document.createElement("a");
+                                            a.href = pdfBlob.url;
+                                            a.download = pdfBlob.filename;
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            toast.success("Berhasil mengunduh PDF");
+                                        }
+                                    } catch (err: any) {
+                                        console.error("Save error:", err);
+                                        toast.error("Gagal menyimpan PDF: " + (err.message || ""));
+                                    }
                                 }}
                             >
                                 <Download className="w-4 h-4 mr-2" /> Simpan
@@ -326,21 +350,58 @@ export function ReportDownloadDialog({
                             <Button
                                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                                 onClick={async () => {
-                                    if (navigator.canShare && navigator.canShare({ files: [pdfBlob.file] })) {
-                                        try {
-                                            await navigator.share({
-                                                files: [pdfBlob.file],
-                                                title: "Laporan Kas Kost Annisa",
-                                                text: "Berikut lampiran Laporan Kas Kost Annisa."
-                                            });
-                                        } catch (err: any) {
-                                            if (err.name !== 'AbortError') {
-                                                console.error("Share error:", err);
-                                                toast.error("Gagal membagikan file.");
+                                    try {
+                                        if (Capacitor.isNativePlatform()) {
+                                            // Native: simpan temp file lalu share via native share sheet
+                                            const reader = new FileReader();
+                                            reader.onloadend = async () => {
+                                                try {
+                                                    const base64Data = (reader.result as string).split(',')[1];
+                                                    // Simpan file sementara untuk di-share
+                                                    const savedFile = await Filesystem.writeFile({
+                                                        path: pdfBlob.filename,
+                                                        data: base64Data,
+                                                        directory: Directory.Cache,
+                                                    });
+                                                    // Buka native share sheet (WhatsApp, Telegram, dll)
+                                                    await Share.share({
+                                                        title: "Laporan Kas Kost Annisa",
+                                                        text: "Berikut lampiran Laporan Kas Kost Annisa.",
+                                                        url: savedFile.uri,
+                                                        dialogTitle: "Bagikan Laporan PDF",
+                                                    });
+                                                } catch (err: any) {
+                                                    if (err.message !== 'Share canceled') {
+                                                        console.error("Share error:", err);
+                                                        toast.error("Gagal membagikan file.");
+                                                    }
+                                                }
+                                            };
+                                            reader.readAsDataURL(pdfBlob.file);
+                                        } else {
+                                            // Web fallback: gunakan Web Share API jika tersedia
+                                            if (navigator.canShare && navigator.canShare({ files: [pdfBlob.file] })) {
+                                                await navigator.share({
+                                                    files: [pdfBlob.file],
+                                                    title: "Laporan Kas Kost Annisa",
+                                                    text: "Berikut lampiran Laporan Kas Kost Annisa."
+                                                });
+                                            } else {
+                                                // Fallback: langsung download
+                                                const a = document.createElement("a");
+                                                a.href = pdfBlob.url;
+                                                a.download = pdfBlob.filename;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                                toast.info("PDF telah diunduh. Silakan share secara manual via WhatsApp.");
                                             }
                                         }
-                                    } else {
-                                        toast.error("Browser Anda tidak mendukung share file langsung. Silakan tap tombol Simpan lalu share secara manual.");
+                                    } catch (err: any) {
+                                        if (err.name !== 'AbortError') {
+                                            console.error("Share error:", err);
+                                            toast.error("Gagal membagikan file.");
+                                        }
                                     }
                                 }}
                             >
