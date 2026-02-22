@@ -68,9 +68,9 @@ app.use(
             const allowed = (c.env.APP_ORIGINS || 'http://localhost:3000')
                 .split(',')
                 .map((s: string) => s.trim());
-            if (allowed.includes(origin) || allowed.includes('*')) return origin;
+            if (allowed.includes(origin) || allowed.includes('*')) return origin || '*';
             // Allow Cloudflare preview domains
-            if (origin.endsWith('.pages.dev')) return origin;
+            if (origin && origin.endsWith('.pages.dev')) return origin;
             return '';
         },
         allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
