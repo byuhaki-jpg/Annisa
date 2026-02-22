@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Loader2, Download, FileText, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,9 @@ export function ReportDownloadDialog({
                 // Temporary make it visible but absolute and off-screen to screenshot it correctly
                 element.style.display = 'block';
 
+                // Yield to visually render
+                await new Promise((resolve) => setTimeout(resolve, 100));
+
                 try {
                     const canvas = await html2canvas(element, { scale: 2, useCORS: true });
                     const imgData = canvas.toDataURL("image/jpeg", 1.0);
@@ -86,13 +89,14 @@ export function ReportDownloadDialog({
                     toast.success(`Laporan berhasil diunduh sebagai ${formatType.toUpperCase()}`);
                     onOpenChange(false);
                 } catch (err: any) {
+                    console.error("PDF Render Error:", err);
                     toast.error("Gagal membuat file " + formatType.toUpperCase());
                 } finally {
                     element.style.display = 'none';
                     setDownloadingFormat(null);
                     setReportData(null);
                 }
-            }, 500);
+            }, 300);
 
         } catch (err: any) {
             toast.error(err.message || "Gagal menarik data dari server.");
@@ -101,51 +105,53 @@ export function ReportDownloadDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Download className="w-5 h-5 text-blue-600" /> Unduh Laporan Keuangan
-                    </DialogTitle>
-                    <DialogDescription>
-                        Pilih rentang tanggal untuk ditarik datanya menjadi dokumen resmi (Kop Surat).
-                    </DialogDescription>
-                </DialogHeader>
+        <>
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Download className="w-5 h-5 text-blue-600" /> Unduh Laporan Keuangan
+                        </DialogTitle>
+                        <DialogDescription>
+                            Pilih rentang tanggal untuk ditarik datanya menjadi dokumen resmi (Kop Surat).
+                        </DialogDescription>
+                    </DialogHeader>
 
-                <div className="flex flex-col gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label>Dari Tanggal</Label>
-                            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label>Sampai Tanggal</Label>
-                            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                    <div className="flex flex-col gap-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label>Dari Tanggal</Label>
+                                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Sampai Tanggal</Label>
+                                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <DialogFooter className="flex-col sm:flex-row gap-2 mt-2">
-                    <Button
-                        variant="default"
-                        disabled={downloadingFormat !== null}
-                        onClick={() => handleDownload('pdf')}
-                        className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700"
-                    >
-                        {downloadingFormat === 'pdf' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
-                        Unduh sbg PDF
-                    </Button>
-                    <Button
-                        variant="outline"
-                        disabled={downloadingFormat !== null}
-                        onClick={() => handleDownload('jpg')}
-                        className="w-full sm:w-1/2"
-                    >
-                        {downloadingFormat === 'jpg' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ImageIcon className="w-4 h-4 mr-2 text-blue-600" />}
-                        Unduh sbg JPG
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
+                    <DialogFooter className="flex-col sm:flex-row gap-2 mt-2">
+                        <Button
+                            variant="default"
+                            disabled={downloadingFormat !== null}
+                            onClick={() => handleDownload('pdf')}
+                            className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700"
+                        >
+                            {downloadingFormat === 'pdf' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+                            Unduh sbg PDF
+                        </Button>
+                        <Button
+                            variant="outline"
+                            disabled={downloadingFormat !== null}
+                            onClick={() => handleDownload('jpg')}
+                            className="w-full sm:w-1/2"
+                        >
+                            {downloadingFormat === 'jpg' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ImageIcon className="w-4 h-4 mr-2 text-blue-600" />}
+                            Unduh sbg JPG
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Invisible Report Template for html2canvas */}
             <div
@@ -237,6 +243,6 @@ export function ReportDownloadDialog({
                     </div>
                 )}
             </div>
-        </Dialog>
+        </>
     );
 }
