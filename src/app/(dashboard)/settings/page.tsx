@@ -149,7 +149,7 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl pb-16">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl pb-16 overflow-x-hidden w-full">
             <div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Pengaturan</h2>
                 <p className="text-slate-500 mt-1 sm:mt-2 text-sm">Kelola preferensi sistem Kost Annisa</p>

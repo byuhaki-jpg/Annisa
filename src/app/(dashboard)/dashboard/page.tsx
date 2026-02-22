@@ -58,7 +58,7 @@ export default function DashboardPage() {
     } = dashboard as any;
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16 overflow-x-hidden">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Ringkasan</h2>
                 <div className="flex gap-2">

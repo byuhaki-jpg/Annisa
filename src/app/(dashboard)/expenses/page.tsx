@@ -366,8 +366,74 @@ export default function ExpensesPage() {
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="rounded-md border bg-white shadow-sm w-full overflow-x-auto">
+            {/* ── Mobile Card View ── */}
+            <div className="md:hidden space-y-3">
+                {isLoading ? (
+                    <div className="text-center py-12 text-slate-400">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                        Memuat data...
+                    </div>
+                ) : expenses.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 bg-white rounded-lg border">
+                        Belum ada pengeluaran di periode ini.
+                    </div>
+                ) : (
+                    expenses.map((exp: any) => (
+                        <div key={exp.id} className="bg-white rounded-xl border shadow-sm p-4 space-y-2">
+                            <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <Badge variant="outline" className={`text-xs ${exp.type === 'income' ? 'text-emerald-600 border-emerald-200 bg-emerald-50' : 'text-rose-600 border-rose-200 bg-rose-50'}`}>
+                                            {exp.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                                        </Badge>
+                                        <Badge variant={exp.status === "confirmed" ? "default" : "secondary"} className="text-xs">
+                                            {exp.status === "confirmed" ? "Sukses" : "Draft"}
+                                        </Badge>
+                                    </div>
+                                    <p className="font-semibold text-slate-800 mt-1.5">{CATEGORY_LABELS[exp.category] ?? exp.category}</p>
+                                    {exp.notes && (
+                                        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{exp.notes}</p>
+                                    )}
+                                </div>
+                                <div className={`text-right font-bold text-lg shrink-0 ml-3 ${exp.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    {exp.type === 'income' ? '+' : '-'}{formatCurrency(exp.amount)}
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+                                <div className="flex items-center gap-3">
+                                    <span>{exp.expense_date}</span>
+                                    <span>·</span>
+                                    <span>{METHOD_LABELS[exp.method] ?? exp.method}</span>
+                                    {exp.receipt_key && (
+                                        <>
+                                            <span>·</span>
+                                            <button
+                                                className="text-blue-500 font-medium flex items-center gap-0.5"
+                                                onClick={() => window.open(api.getReceiptUrl(exp.receipt_key), '_blank')}
+                                            >
+                                                <Paperclip className="w-3 h-3" /> Nota
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                                {isAdmin && (
+                                    <div className="flex items-center gap-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-blue-600" onClick={() => openEditModal(exp)}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-600" onClick={() => setDeleteTarget(exp)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* ── Desktop Table View ── */}
+            <div className="hidden md:block rounded-md border bg-white shadow-sm w-full overflow-x-auto">
                 <Table className="min-w-max">
                     <TableHeader className="bg-slate-50">
                         <TableRow>

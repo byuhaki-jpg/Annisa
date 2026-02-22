@@ -118,9 +118,9 @@ const SimpleTotalTooltip = ({ active, payload }: any) => {
 
 export default function ReportPage() {
     const now = new Date();
-    const [from, setFrom] = useState(fmt(subMonths(now, 11)));
+    const [from, setFrom] = useState(fmt(subMonths(now, 5)));
     const [to, setTo] = useState(fmt(now));
-    const [activePreset, setActivePreset] = useState("12 Bulan");
+    const [activePreset, setActivePreset] = useState("6 Bulan");
 
     const selectPreset = (preset: typeof PRESETS[0]) => {
         setFrom(preset.from());
@@ -303,13 +303,16 @@ export default function ReportPage() {
                             <CardDescription>Breakdown biaya operasional per bulan — {fromLabel} hingga {toLabel}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={340}>
-                                <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                            <ResponsiveContainer width="100%" height={380}>
+                                <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 30 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false}
-                                        axisLine={{ stroke: "#e2e8f0" }} interval={chartData.length > 12 ? 1 : 0} />
-                                    <YAxis tickFormatter={formatRpShort} tick={{ fontSize: 11, fill: "#64748b" }}
-                                        tickLine={false} axisLine={false} width={76} />
+                                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false}
+                                        axisLine={{ stroke: "#e2e8f0" }} interval={0}
+                                        angle={chartData.length > 6 ? -45 : 0}
+                                        textAnchor={chartData.length > 6 ? "end" : "middle"}
+                                        height={50} />
+                                    <YAxis tickFormatter={formatRpShort} tick={{ fontSize: 10, fill: "#64748b" }}
+                                        tickLine={false} axisLine={false} width={60} />
                                     <Tooltip content={<CustomTooltip />} />
                                     <Legend
                                         wrapperStyle={{ fontSize: 12, paddingTop: 16 }}
@@ -368,13 +371,16 @@ export default function ReportPage() {
                             <CardDescription>Perkembangan total biaya operasional tiap bulan</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={240}>
-                                <LineChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 30 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false}
-                                        axisLine={{ stroke: "#e2e8f0" }} interval={chartData.length > 12 ? 1 : 0} />
-                                    <YAxis tickFormatter={formatRpShort} tick={{ fontSize: 11, fill: "#64748b" }}
-                                        tickLine={false} axisLine={false} width={76} />
+                                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false}
+                                        axisLine={{ stroke: "#e2e8f0" }} interval={0}
+                                        angle={chartData.length > 6 ? -45 : 0}
+                                        textAnchor={chartData.length > 6 ? "end" : "middle"}
+                                        height={50} />
+                                    <YAxis tickFormatter={formatRpShort} tick={{ fontSize: 10, fill: "#64748b" }}
+                                        tickLine={false} axisLine={false} width={60} />
                                     <Tooltip content={<SimpleTotalTooltip />} />
                                     <ReferenceLine y={avgExpense} stroke="#fbbf24" strokeDasharray="4 4"
                                         label={{ value: "Rata-rata", position: "right", fontSize: 10, fill: "#d97706" }} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { Role } from "@/lib/types";
@@ -103,6 +103,16 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [forgotOpen, setForgotOpen] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
+
+    // Load saved email on mount
+    useEffect(() => {
+        const savedEmail = localStorage.getItem("remember_email");
+        if (savedEmail) {
+            setEmail(savedEmail);
+            setRememberMe(true);
+        }
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -111,6 +121,11 @@ export default function LoginPage() {
         try {
             const res: any = await api.login({ email, password });
             localStorage.setItem("auth_token", res.token);
+            if (rememberMe) {
+                localStorage.setItem("remember_email", email);
+            } else {
+                localStorage.removeItem("remember_email");
+            }
             setRole(res.role as Role);
             toast.success("Login berhasil!");
             router.push("/dashboard");
@@ -199,8 +214,17 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        {/* Forgot password */}
-                        <div className="flex justify-end">
+                        {/* Remember Me + Forgot password */}
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                    className="w-4 h-4 rounded border-white/30 bg-white/10 text-blue-500 focus:ring-blue-400/30 cursor-pointer"
+                                />
+                                <span className="text-xs text-blue-200/70">Ingat Saya</span>
+                            </label>
                             <button
                                 type="button"
                                 onClick={() => setForgotOpen(true)}
