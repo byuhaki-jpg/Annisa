@@ -499,6 +499,16 @@ app.patch('/api/rooms/:id', requireRole('admin_utama', 'admin'), async (c) => {
     if (sets.length === 0) return c.json({ error: { code: 'VALIDATION', message: 'Nothing to update' } }, 400);
     vals.push(roomId);
     await execute(c.env.DB, `UPDATE rooms SET ${sets.join(', ')} WHERE id = ?`, ...vals);
+
+    // Auto-sync: update unpaid invoices for this room to new rate
+    if (parsed.data.monthly_rate !== undefined) {
+        await execute(
+            c.env.DB,
+            `UPDATE invoices SET amount = ? WHERE room_id = ? AND status = 'unpaid'`,
+            parsed.data.monthly_rate, roomId
+        );
+    }
+
     return c.json({ ok: true });
 });
 
@@ -514,6 +524,14 @@ app.post('/api/rooms/bulk-rate', requireRole('admin_utama', 'admin'), async (c) 
         `UPDATE rooms SET monthly_rate = ? WHERE property_id = ?`,
         rate, pid(c)
     );
+
+    // Auto-sync: update all unpaid invoices to new rate
+    await execute(
+        c.env.DB,
+        `UPDATE invoices SET amount = ? WHERE property_id = ? AND status = 'unpaid'`,
+        rate, pid(c)
+    );
+
     return c.json({ ok: true, updated: rate });
 });
 
