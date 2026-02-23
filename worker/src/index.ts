@@ -274,7 +274,7 @@ app.post('/api/telegram/webhook', async (c) => {
         groqKey: (settings as any)?.groq_api_key || c.env.GROQ_API_KEY,
         db: c.env.DB,
         propertyId,
-        r2Bucket: c.env.R2_BUCKET,
+        appsScriptUrl: "https://script.google.com/macros/s/AKfycbyV0qwU2Yb1OKHWNrlus3IL0lq0JjDnyS1qfrmLtbardw0pJmWotbgwCrl-u1wzpLsBsw/exec",
         workerUrl: new URL(c.req.url).origin,
         sheetsSync,
     });

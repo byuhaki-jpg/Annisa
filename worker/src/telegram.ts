@@ -227,7 +227,7 @@ interface TelegramDeps {
     groqKey: string;
     db: D1Database;
     propertyId: string;
-    r2Bucket?: R2Bucket;
+    appsScriptUrl?: string;
     workerUrl?: string;
     sheetsSync?: (type: string, category: string, amount: number, method: string, notes: string, createdBy: string, receiptUrl?: string) => Promise<void>;
 }
@@ -492,20 +492,42 @@ async function handlePhoto(chatId: number, msg: any, deps: TelegramDeps) {
     const fileBuffer = await fileRes.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
 
-    // Upload photo to R2 as receipt proof
+    // Upload photo to Google Drive
     let receiptKey: string | undefined;
-    if (deps.r2Bucket) {
+    if (deps.appsScriptUrl) {
         try {
-            const now = new Date();
-            const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             const ext = filePath.endsWith('.png') ? 'png' : 'jpg';
-            const fileId = `tg_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-            receiptKey = `receipts/${deps.propertyId}/${period}/${fileId}.${ext}`;
-            await deps.r2Bucket.put(receiptKey, fileBuffer, {
-                httpMetadata: { contentType: `image/${ext === 'png' ? 'png' : 'jpeg'}` },
+            const filename = `tg_${Date.now().toString(36)}.${ext}`;
+            const contentType = `image/${ext === 'png' ? 'png' : 'jpeg'}`;
+
+            const params = new URLSearchParams();
+            params.append('fileData', base64);
+            params.append('mimeType', contentType);
+            params.append('fileName', filename);
+
+            const response = await fetch(deps.appsScriptUrl, {
+                method: 'POST',
+                body: params.toString(),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             });
+
+            const resultText = await response.text();
+            let resultData: any = {};
+            try {
+                resultData = JSON.parse(resultText);
+            } catch {
+                throw new Error(`Apps Script invalid response: ${resultText}`);
+            }
+
+            if (resultData.status === 'success') {
+                receiptKey = resultData.url;
+            } else {
+                console.error('[Drive Upload Error]', resultData.message);
+            }
         } catch (err) {
-            console.error('[R2 Upload Error]', err);
+            console.error('[Drive Upload Error]', err);
             receiptKey = undefined;
         }
     }
@@ -790,11 +812,8 @@ async function handleCallback(query: any, deps: TelegramDeps) {
         const now = new Date();
         const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-        // Build receipt URL for sheets
-        let receiptUrl: string | undefined;
-        if (tx.receipt_key && deps.workerUrl) {
-            receiptUrl = `${deps.workerUrl}/api/uploads/${encodeURIComponent(tx.receipt_key)}`;
-        }
+        // Build receipt URL for sheets (Drive URL is already absolute)
+        let receiptUrl: string | undefined = tx.receipt_key;
 
         // If items exist, save each item as a separate expense
         const expIds: string[] = [];
