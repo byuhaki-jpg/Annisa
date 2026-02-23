@@ -229,8 +229,18 @@ app.post('/api/telegram/webhook', async (c) => {
     const settings = await getSettings(c.env.DB, propertyId);
     const sheetsConfig = getSheetsConfig(settings, c.env);
 
-    const sheetsSync = sheetsConfig ? async (type: string, category: string, amount: number, method: string, notes: string, createdBy: string) => {
+    const sheetsSync = sheetsConfig ? async (type: string, category: string, amount: number, method: string, notes: string, createdBy: string, receiptUrl?: string) => {
         const typeLabel = type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+        // Shorten receipt URL if provided
+        let shortReceiptUrl = receiptUrl;
+        if (receiptUrl) {
+            try {
+                const { shortenUrl } = await import('./shortener');
+                shortReceiptUrl = await shortenUrl(c.env.DB, receiptUrl);
+            } catch (e) {
+                console.error('[Shorten URL]', e);
+            }
+        }
         await appendCashflowRow(sheetsConfig, {
             date: new Date().toISOString().slice(0, 10),
             type: typeLabel as any,
@@ -240,6 +250,7 @@ app.post('/api/telegram/webhook', async (c) => {
             status: 'confirmed',
             created_by: createdBy,
             notes,
+            receipt_url: shortReceiptUrl,
         });
     } : undefined;
 
@@ -248,6 +259,8 @@ app.post('/api/telegram/webhook', async (c) => {
         groqKey: (settings as any)?.groq_api_key || c.env.GROQ_API_KEY,
         db: c.env.DB,
         propertyId,
+        r2Bucket: c.env.R2_BUCKET,
+        workerUrl: new URL(c.req.url).origin,
         sheetsSync,
     });
 

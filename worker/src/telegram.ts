@@ -202,6 +202,7 @@ export interface ParsedTransaction {
     confidence?: string;
     items?: ReceiptItem[];
     store?: string;
+    receipt_key?: string;
 }
 
 export async function analyzeReceiptImage(groqKey: string, imageBase64: string): Promise<ParsedTransaction> {
@@ -226,8 +227,12 @@ interface TelegramDeps {
     groqKey: string;
     db: D1Database;
     propertyId: string;
-    sheetsSync?: (type: string, category: string, amount: number, method: string, notes: string, createdBy: string) => Promise<void>;
+    r2Bucket?: R2Bucket;
+    workerUrl?: string;
+    sheetsSync?: (type: string, category: string, amount: number, method: string, notes: string, createdBy: string, receiptUrl?: string) => Promise<void>;
 }
+
+type R2Bucket = import('@cloudflare/workers-types').R2Bucket;
 
 // ── Pending transactions store (in-memory per request, stored in D1) ──
 
@@ -487,6 +492,24 @@ async function handlePhoto(chatId: number, msg: any, deps: TelegramDeps) {
     const fileBuffer = await fileRes.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
 
+    // Upload photo to R2 as receipt proof
+    let receiptKey: string | undefined;
+    if (deps.r2Bucket) {
+        try {
+            const now = new Date();
+            const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const ext = filePath.endsWith('.png') ? 'png' : 'jpg';
+            const fileId = `tg_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+            receiptKey = `receipts/${deps.propertyId}/${period}/${fileId}.${ext}`;
+            await deps.r2Bucket.put(receiptKey, fileBuffer, {
+                httpMetadata: { contentType: `image/${ext === 'png' ? 'png' : 'jpeg'}` },
+            });
+        } catch (err) {
+            console.error('[R2 Upload Error]', err);
+            receiptKey = undefined;
+        }
+    }
+
     try {
         const tx = await analyzeReceiptImage(deps.groqKey, base64);
 
@@ -494,6 +517,9 @@ async function handlePhoto(chatId: number, msg: any, deps: TelegramDeps) {
             await sendMessage(deps.botToken, chatId, '❌ Tidak bisa mendeteksi jumlah dari nota. Coba ketik manual.');
             return;
         }
+
+        // Attach receipt key to transaction
+        tx.receipt_key = receiptKey;
 
         // Store pending and show confirmation
         const pendingId = await storePending(deps.db, chatId, tx);
@@ -598,6 +624,10 @@ async function showConfirmation(chatId: number, tx: ParsedTransaction, pendingId
 
     if (tx.store) {
         msg += `🏪 Toko: <b>${tx.store}</b>\n`;
+    }
+
+    if (tx.receipt_key) {
+        msg += `📎 Bukti nota tersimpan\n`;
     }
 
     msg += `💰 Total: <b>Rp ${tx.amount.toLocaleString('id-ID')}</b>\n`;
@@ -757,22 +787,51 @@ async function handleCallback(query: any, deps: TelegramDeps) {
             return;
         }
 
-        // Save to database
         const now = new Date();
         const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const expId = `exp_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-        await deps.db.prepare(
-            `INSERT INTO expenses (id, property_id, expense_date, category, amount, method, notes, status, type, created_by)
-             VALUES (?, ?, ?, ?, ?, 'cash', ?, 'confirmed', ?, 'telegram_bot')`
-        ).bind(expId, deps.propertyId, dateStr, tx.category, tx.amount, tx.notes, tx.type).run();
+        // Build receipt URL for sheets
+        let receiptUrl: string | undefined;
+        if (tx.receipt_key && deps.workerUrl) {
+            receiptUrl = `${deps.workerUrl}/api/uploads/${encodeURIComponent(tx.receipt_key)}`;
+        }
 
-        // Sync to sheets
-        if (deps.sheetsSync) {
-            try {
-                await deps.sheetsSync(tx.type, tx.category, tx.amount, 'cash', tx.notes, 'telegram_bot');
-            } catch (e) {
-                console.error('[Sheets sync from TG]', e);
+        // If items exist, save each item as a separate expense
+        const expIds: string[] = [];
+        if (tx.items && tx.items.length > 1) {
+            for (const item of tx.items) {
+                const expId = `exp_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+                const itemNotes = `${item.qty > 1 ? item.qty + (item.unit !== 'pcs' ? ' ' + item.unit : 'x') + ' ' : ''}${item.name}`;
+                await deps.db.prepare(
+                    `INSERT INTO expenses (id, property_id, expense_date, category, amount, method, receipt_key, notes, status, type, created_by)
+                     VALUES (?, ?, ?, ?, ?, 'cash', ?, ?, 'confirmed', ?, 'telegram_bot')`
+                ).bind(expId, deps.propertyId, dateStr, tx.category, item.subtotal, tx.receipt_key || null, itemNotes, tx.type).run();
+                expIds.push(expId);
+
+                // Sync each item to sheets
+                if (deps.sheetsSync) {
+                    try {
+                        await deps.sheetsSync(tx.type, tx.category, item.subtotal, 'cash', itemNotes, 'telegram_bot', receiptUrl);
+                    } catch (e) {
+                        console.error('[Sheets sync item]', e);
+                    }
+                }
+            }
+        } else {
+            // Single item or no items — save as one entry
+            const expId = `exp_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+            await deps.db.prepare(
+                `INSERT INTO expenses (id, property_id, expense_date, category, amount, method, receipt_key, notes, status, type, created_by)
+                 VALUES (?, ?, ?, ?, ?, 'cash', ?, ?, 'confirmed', ?, 'telegram_bot')`
+            ).bind(expId, deps.propertyId, dateStr, tx.category, tx.amount, tx.receipt_key || null, tx.notes, tx.type).run();
+            expIds.push(expId);
+
+            if (deps.sheetsSync) {
+                try {
+                    await deps.sheetsSync(tx.type, tx.category, tx.amount, 'cash', tx.notes, 'telegram_bot', receiptUrl);
+                } catch (e) {
+                    console.error('[Sheets sync from TG]', e);
+                }
             }
         }
 
@@ -785,16 +844,23 @@ async function handleCallback(query: any, deps: TelegramDeps) {
             `✅ <b>Tersimpan!</b>\n\n` +
             `📋 ${typeLabel} — ${tx.category}\n`;
         if (tx.store) savedMsg += `🏪 ${tx.store}\n`;
-        savedMsg += `💰 Rp ${tx.amount.toLocaleString('id-ID')}\n`;
-        if (tx.items && tx.items.length > 0) {
-            for (const item of tx.items) {
+        if (tx.receipt_key) savedMsg += `📎 Bukti nota tersimpan\n`;
+
+        if (tx.items && tx.items.length > 1) {
+            savedMsg += `\n📦 ${tx.items.length} item disimpan:\n`;
+            for (let i = 0; i < tx.items.length; i++) {
+                const item = tx.items[i];
                 const qtyStr = item.qty > 1 ? `${item.qty}${item.unit !== 'pcs' ? ' ' + item.unit : 'x'} ` : '';
                 savedMsg += `  • ${qtyStr}${item.name} — Rp ${item.subtotal.toLocaleString('id-ID')}\n`;
             }
+            savedMsg += `\n💰 Total: <b>Rp ${tx.amount.toLocaleString('id-ID')}</b>\n`;
+            savedMsg += `🆔 ${expIds.length} entries: ${expIds.join(', ')}`;
         } else {
+            savedMsg += `💰 Rp ${tx.amount.toLocaleString('id-ID')}\n`;
             savedMsg += `📝 ${tx.notes}\n`;
+            savedMsg += `🆔 ${expIds[0]}`;
         }
-        savedMsg += `🆔 ${expId}`;
+
         await editMessage(deps.botToken, chatId, messageId, savedMsg);
     }
 }
