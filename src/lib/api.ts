@@ -147,7 +147,7 @@ export const api = {
         }
     },
 
-    scanNotaAI: async (file: File): Promise<{ type: string; category: string; amount: number; notes: string }> => {
+    scanNotaAI: async (file: File): Promise<{ type: string; category: string; amount: number; notes: string; items?: { name: string; qty: number; unit: string; price: number; subtotal: number }[]; store?: string }> => {
         const formData = new FormData();
         formData.append('file', file);
 
