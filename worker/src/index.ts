@@ -284,6 +284,24 @@ app.post('/api/telegram/webhook', async (c) => {
 
 // Setup webhook URL (call once) — moved behind auth below
 
+// Serve file from R2 (GET) - Publicly accessible for short links
+app.get('/api/uploads/:key{.+}', async (c) => {
+    const key = decodeURIComponent(c.req.param('key'));
+    const obj = await getObject(c.env.R2_BUCKET, key);
+    if (!obj) {
+        return c.json({ error: { code: 'NOT_FOUND', message: 'File not found' } }, 404);
+    }
+    const contentType = obj.httpMetadata?.contentType || 'application/octet-stream';
+    const body = await obj.arrayBuffer();
+    return new Response(body, {
+        headers: {
+            'Content-Type': contentType,
+            'Content-Disposition': `inline; filename="${key.split('/').pop()}"`,
+            'Cache-Control': 'private, max-age=3600',
+        },
+    });
+});
+
 // ── Auth middleware for all other /api routes ─────
 app.use('/api/*', authMiddleware);
 
@@ -954,23 +972,6 @@ app.post('/api/uploads/presign', async (c) => {
     return c.json(presignResponse(key));
 });
 
-// Serve file from R2 (GET)
-app.get('/api/uploads/:key{.+}', async (c) => {
-    const key = decodeURIComponent(c.req.param('key'));
-    const obj = await getObject(c.env.R2_BUCKET, key);
-    if (!obj) {
-        return c.json({ error: { code: 'NOT_FOUND', message: 'File not found' } }, 404);
-    }
-    const contentType = obj.httpMetadata?.contentType || 'application/octet-stream';
-    const body = await obj.arrayBuffer();
-    return new Response(body, {
-        headers: {
-            'Content-Type': contentType,
-            'Content-Disposition': `inline; filename="${key.split('/').pop()}"`,
-            'Cache-Control': 'private, max-age=3600',
-        },
-    });
-});
 
 // Actual R2 upload endpoint (frontend PUTs file here)
 app.put('/api/uploads/:key{.+}', async (c) => {
