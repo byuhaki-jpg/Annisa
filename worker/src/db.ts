@@ -50,7 +50,7 @@ export async function getAllTenants(db: D1Database, propertyId: string) {
 export async function getInvoicesForPeriod(db: D1Database, propertyId: string, period: string) {
     return queryAll(
         db,
-        `SELECT i.*, t.name AS tenant_name, r.room_no
+        `SELECT i.*, t.name AS tenant_name, t.move_in_date, r.room_no
      FROM invoices i
      JOIN tenants t ON t.id = i.tenant_id
      JOIN rooms r ON r.id = i.room_id

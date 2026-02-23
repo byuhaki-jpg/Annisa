@@ -132,6 +132,7 @@ export default function InvoicesPage() {
                             <TableHead className="whitespace-nowrap">Kamar</TableHead>
                             <TableHead className="whitespace-nowrap">Periode</TableHead>
                             <TableHead className="text-right whitespace-nowrap">Jumlah</TableHead>
+                            <TableHead className="whitespace-nowrap">Jatuh Tempo</TableHead>
                             <TableHead className="text-center whitespace-nowrap">Status</TableHead>
                             <TableHead className="text-right whitespace-nowrap">Aksi</TableHead>
                         </TableRow>
@@ -139,42 +140,72 @@ export default function InvoicesPage() {
                     <TableBody>
                         {isLoading ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-12">
+                                <TableCell colSpan={8} className="text-center py-12">
                                     <Loader2 className="h-6 w-6 animate-spin text-slate-400 mx-auto" />
                                 </TableCell>
                             </TableRow>
                         ) : invoices.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8 text-slate-500 italic">
+                                <TableCell colSpan={8} className="text-center py-8 text-slate-500 italic">
                                     Belum ada tagihan untuk periode ini
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            invoices.map((inv: any) => (
-                                <TableRow key={inv.id}>
-                                    <TableCell className="font-medium text-slate-700 whitespace-nowrap">{inv.invoice_no}</TableCell>
-                                    <TableCell className="font-semibold whitespace-nowrap">{inv.tenant_name}</TableCell>
-                                    <TableCell className="whitespace-nowrap">Kmr {inv.room_no}</TableCell>
-                                    <TableCell className="whitespace-nowrap">{inv.period}</TableCell>
-                                    <TableCell className="text-right font-medium whitespace-nowrap">{formatCurrency(inv.amount)}</TableCell>
-                                    <TableCell className="text-center whitespace-nowrap">
-                                        <Badge variant={inv.status === "paid" ? "default" : "secondary"} className={inv.status === 'paid' ? 'bg-emerald-500 hover:bg-emerald-600' : 'text-slate-500'}>
-                                            {inv.status === "paid" ? "Lunas" : "Belum Lunas"}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                        {inv.status === "unpaid" ? (
-                                            <Button variant="outline" size="sm" onClick={() => openPaymentModal(inv)}>
-                                                <CheckSquare className="h-4 w-4 mr-2" /> Catat Lunas
-                                            </Button>
-                                        ) : (
-                                            <span className="text-sm text-slate-400 italic">
-                                                Dilunasi {format(new Date(inv.paid_at), "dd MMM yyyy", { locale: id })}
-                                            </span>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                            invoices.map((inv: any) => {
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const dueDate = inv.due_date ? new Date(inv.due_date + 'T00:00:00') : null;
+                                const isOverdue = dueDate && inv.status === 'unpaid' && dueDate < today;
+                                const daysLate = dueDate && isOverdue
+                                    ? Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
+                                    : 0;
+
+                                return (
+                                    <TableRow key={inv.id} className={isOverdue ? 'bg-red-50/50' : ''}>
+                                        <TableCell className="font-medium text-slate-700 whitespace-nowrap">{inv.invoice_no}</TableCell>
+                                        <TableCell className="font-semibold whitespace-nowrap">{inv.tenant_name}</TableCell>
+                                        <TableCell className="whitespace-nowrap">Kmr {inv.room_no}</TableCell>
+                                        <TableCell className="whitespace-nowrap">{inv.period}</TableCell>
+                                        <TableCell className="text-right font-medium whitespace-nowrap">{formatCurrency(inv.amount)}</TableCell>
+                                        <TableCell className="whitespace-nowrap">
+                                            {dueDate ? (
+                                                <div className="flex flex-col">
+                                                    <span className={isOverdue ? 'text-red-600 font-semibold' : 'text-slate-700'}>
+                                                        {format(dueDate, 'dd MMM yyyy', { locale: id })}
+                                                    </span>
+                                                    {isOverdue && (
+                                                        <span className="text-xs text-red-500 font-medium">
+                                                            ⚠️ Terlambat {daysLate} hari
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-slate-400 text-sm italic">-</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-center whitespace-nowrap">
+                                            {isOverdue ? (
+                                                <Badge variant="destructive">Terlambat</Badge>
+                                            ) : (
+                                                <Badge variant={inv.status === "paid" ? "default" : "secondary"} className={inv.status === 'paid' ? 'bg-emerald-500 hover:bg-emerald-600' : 'text-slate-500'}>
+                                                    {inv.status === "paid" ? "Lunas" : "Belum Lunas"}
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                            {inv.status === "unpaid" ? (
+                                                <Button variant="outline" size="sm" onClick={() => openPaymentModal(inv)}>
+                                                    <CheckSquare className="h-4 w-4 mr-2" /> Catat Lunas
+                                                </Button>
+                                            ) : (
+                                                <span className="text-sm text-slate-400 italic">
+                                                    Dilunasi {format(new Date(inv.paid_at), "dd MMM yyyy", { locale: id })}
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
                         )}
                     </TableBody>
                 </Table>

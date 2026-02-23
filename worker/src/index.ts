@@ -599,16 +599,17 @@ app.post('/api/invoices/generate', async (c) => {
         return c.json({ error: { code: 'VALIDATION', message: 'Invalid period format' } }, 400);
     }
 
-    // Get all active tenants with their rooms
+    // Get all active tenants with their rooms + move_in_date
     const activeTenants = await queryAll<{
         id: string;
         room_id: string;
         name: string;
         room_no: number;
         monthly_rate: number;
+        move_in_date: string;
     }>(
         c.env.DB,
-        `SELECT t.id, t.room_id, t.name, r.room_no, r.monthly_rate
+        `SELECT t.id, t.room_id, t.name, t.move_in_date, r.room_no, r.monthly_rate
      FROM tenants t JOIN rooms r ON r.id = t.room_id
      WHERE t.property_id = ? AND t.is_active = 1`,
         pid(c)
@@ -625,6 +626,16 @@ app.post('/api/invoices/generate', async (c) => {
     let seq = await getNextInvoiceSeq(c.env.DB, pid(c), period);
     const created: any[] = [];
 
+    // Helper: calculate due_date from move_in_date and period
+    function calcDueDate(moveInDate: string, period: string): string {
+        const moveDay = new Date(moveInDate).getUTCDate();
+        const [year, month] = period.split('-').map(Number);
+        // Last day of the period month
+        const lastDay = new Date(year, month, 0).getDate();
+        const day = Math.min(moveDay, lastDay);
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+
     for (const tenant of activeTenants) {
         if (existingSet.has(tenant.id)) continue;
 
@@ -632,14 +643,16 @@ app.post('/api/invoices/generate', async (c) => {
         const invNo = invoiceNo(period, seq);
         seq++;
 
+        const dueDate = calcDueDate(tenant.move_in_date, period);
+
         await execute(
             c.env.DB,
-            `INSERT INTO invoices (id, property_id, tenant_id, room_id, period, invoice_no, amount)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            id, pid(c), tenant.id, tenant.room_id, period, invNo, tenant.monthly_rate
+            `INSERT INTO invoices (id, property_id, tenant_id, room_id, period, invoice_no, amount, due_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            id, pid(c), tenant.id, tenant.room_id, period, invNo, tenant.monthly_rate, dueDate
         );
 
-        created.push({ id, invoice_no: invNo, tenant_name: tenant.name, room_no: tenant.room_no, amount: tenant.monthly_rate });
+        created.push({ id, invoice_no: invNo, tenant_name: tenant.name, room_no: tenant.room_no, amount: tenant.monthly_rate, due_date: dueDate });
     }
 
     return c.json({ period, created_count: created.length, invoices: created }, 201);
