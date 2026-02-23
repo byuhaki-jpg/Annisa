@@ -27,7 +27,7 @@ jobs:
 
       - name: Build Next.js
         env:
-          NEXT_PUBLIC_API_URL: https://kostannisa-worker.fikriabdulloh31.workers.dev/api
+          NEXT_PUBLIC_API_URL: https://api.kosannisa.my.id/api
         run: npm run build
         
       - name: Set up JDK 21

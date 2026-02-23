@@ -35,7 +35,7 @@ Currently, all application state relies on a single React Context (`src/lib/stor
 
 To migrate to the Cloudflare Workers API in Phase 2:
 1. **Remove the mock store:** Replace the React Context provider (`AppProvider` in `store.tsx`) with data fetching logic.
-2. **Implement Fetch/SWR/React Query:** Inside each page or component, fetch data via your Cloudflare API route (e.g., `fetch("https://api.kostannisa.my.id/invoices")`).
+2. **Implement Fetch/SWR/React Query:** Inside each page or component, fetch data via your Cloudflare API route (e.g., `fetch("https://api.kosannisa.my.id/invoices")`).
 3. **Handle Mutations:** Replace store mutation methods (`addTenant`, `markInvoicePaid`) with POST/PUT/DELETE API requests.
 4. **Authentication:** Integrate with Cloudflare Access. The `/login` UI is currently a mock wrapper, but in production, traffic will be authenticated edge-side, and you may receive user credentials via HTTP headers (e.g., `Cf-Access-Authenticated-User-Email`).
 

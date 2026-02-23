@@ -24,7 +24,7 @@ worker/
 ├── .dev.vars.example          # Local dev secrets template
 ├── migrations/
 │   ├── 0001_init.sql          # DDL: all tables + indexes
-│   └── 0002_seed.sql          # Seed: property, rooms, users, tenants
+│   └── ...                    # Additional migrations (settings, auth, etc)
 └── src/
     ├── index.ts               # Main Hono router + all endpoints
     ├── auth.ts                # CF Access auth middleware & role guards
@@ -120,7 +120,7 @@ npx wrangler secret put SHEETS_EXPENSE_SHEET_NAME
 
 ### 7. Configure Cloudflare Access
 1. Go to Cloudflare Zero Trust → Access → Applications
-2. Create an application for `api.kostannisa.my.id` (or your worker route)
+2. Create an application for `api.kosannisa.my.id` (or your worker route)
 3. Add an Access Policy (email-based, Google/GitHub IdP)
 4. CF Access will inject `Cf-Access-Authenticated-User-Email` header automatically
 
@@ -136,22 +136,22 @@ npm run dev
 curl http://localhost:8787/api/health
 
 # Authenticated requests (use X-Mock-Email for local dev)
-curl http://localhost:8787/api/me -H "X-Mock-Email: admin@kostannisa.my.id"
-curl http://localhost:8787/api/rooms -H "X-Mock-Email: admin@kostannisa.my.id"
+curl http://localhost:8787/api/me -H "X-Mock-Email: admin@kosannisa.my.id"
+curl http://localhost:8787/api/rooms -H "X-Mock-Email: admin@kosannisa.my.id"
 
 # Generate invoices
 curl -X POST "http://localhost:8787/api/invoices/generate?period=2026-02" \
-  -H "X-Mock-Email: admin@kostannisa.my.id"
+  -H "X-Mock-Email: admin@kosannisa.my.id"
 
 # Record payment
 curl -X POST http://localhost:8787/api/payments \
-  -H "X-Mock-Email: admin@kostannisa.my.id" \
+  -H "X-Mock-Email: admin@kosannisa.my.id" \
   -H "Content-Type: application/json" \
   -d '{"invoice_id":"<ID>","amount":1500000,"method":"transfer"}'
 
 # Add expense
 curl -X POST http://localhost:8787/api/expenses \
-  -H "X-Mock-Email: petugas@kostannisa.my.id" \
+  -H "X-Mock-Email: petugas@kosannisa.my.id" \
   -H "Content-Type: application/json" \
   -d '{"expense_date":"2026-02-20","category":"listrik","amount":350000,"method":"transfer"}'
 ```
@@ -167,14 +167,14 @@ Replace the mock store in the Next.js frontend (`src/lib/store.tsx`) with real A
 
 ```typescript
 // Example: fetch rooms from Worker API
-const res = await fetch('https://api.kostannisa.my.id/api/rooms', {
+const res = await fetch('https://api.kosannisa.my.id/api/rooms', {
   headers: { 'Content-Type': 'application/json' },
   credentials: 'include', // CF Access cookies
 });
 const { rooms } = await res.json();
 ```
 
-The frontend's CORS is already configured in the Worker to accept requests from `kostannisa.my.id` and `*.pages.dev` preview domains.
+The frontend's CORS is already configured in the Worker to accept requests from `kosannisa.my.id` and `*.pages.dev` preview domains.
 
 ## Error Format
 
