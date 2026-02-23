@@ -29,6 +29,7 @@ const CATEGORY_LABELS: Record<string, string> = {
     wifi: "WiFi / Internet",
     kebersihan: "Kebersihan",
     perbaikan: "Perbaikan",
+    gaji: "Gaji Karyawan",
     modal: "Modal Kas",
     lainnya: "Lainnya",
 };

@@ -44,6 +44,8 @@ const CATEGORY_COLORS: Record<string, string> = {
     wifi: "#8b5cf6",   // violet
     kebersihan: "#10b981",   // emerald
     perbaikan: "#ef4444",   // red
+    gaji: "#ec4899",   // pink
+    modal: "#06b6d4",   // cyan
     lainnya: "#6b7280",   // gray
 };
 
@@ -53,6 +55,8 @@ const CATEGORY_LABELS: Record<string, string> = {
     wifi: "WiFi / Internet",
     kebersihan: "Kebersihan",
     perbaikan: "Perbaikan",
+    gaji: "Gaji Karyawan",
+    modal: "Modal Kas",
     lainnya: "Lainnya",
 };
 

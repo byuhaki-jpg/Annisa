@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff, Lock, Building2, CheckCircle2 } from "lucide-react";
+import { Loader2, Eye, EyeOff, Lock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -70,8 +70,9 @@ function ResetPasswordContent() {
             <div className="relative z-10 w-full max-w-md mx-4">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/25 mb-4">
-                        <Building2 className="w-8 h-8 text-white" />
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/90 shadow-lg shadow-blue-500/25 mb-4 p-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="https://blogger.googleusercontent.com/img/a/AVvXsEiPO3Ehdp9v2r7JuQM9VTvIKbpwCv316_f7uxT_fS_3HR-ef7RFBDO2s1XX0H8DJM-urPA8HHFcRDakcxyIgQ21qKqlgATWhipN5IxJiMrEZO-JAOUXeoeZ26xp4Y3pkt8AUM-Hd4YCA5SLq7N7JkPQ8W6WnR2kcfbVLMlKOryK2dYihdQOMjgoTgXTT_YS" alt="Kos Annisa" className="w-full h-full object-contain" />
                     </div>
                     <h1 className="text-3xl font-bold text-white tracking-tight">Reset Password</h1>
                     <p className="text-blue-200/60 mt-1 text-sm">Kost Annisa</p>

@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Exclude build artifacts and non-source dirs:
+    "android/**",
+    "worker/.wrangler/**",
+    "node_modules/**",
   ]),
 ]);
 

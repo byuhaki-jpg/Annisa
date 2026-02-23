@@ -232,7 +232,6 @@ interface TelegramDeps {
     sheetsSync?: (type: string, category: string, amount: number, method: string, notes: string, createdBy: string, receiptUrl?: string) => Promise<void>;
 }
 
-type R2Bucket = import('@cloudflare/workers-types').R2Bucket;
 
 // ── Pending transactions store (in-memory per request, stored in D1) ──
 
@@ -813,7 +812,7 @@ async function handleCallback(query: any, deps: TelegramDeps) {
         const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
         // Build receipt URL for sheets (Drive URL is already absolute)
-        let receiptUrl: string | undefined = tx.receipt_key;
+        const receiptUrl: string | undefined = tx.receipt_key;
 
         // If items exist, save each item as a separate expense
         const expIds: string[] = [];

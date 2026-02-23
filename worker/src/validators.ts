@@ -7,7 +7,7 @@ import { z } from 'zod';
 const periodSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Must be YYYY-MM');
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD');
 const methodSchema = z.enum(['transfer', 'cash', 'other']);
-const categorySchema = z.enum(['listrik', 'air', 'wifi', 'kebersihan', 'perbaikan', 'modal', 'lainnya']);
+const categorySchema = z.enum(['listrik', 'air', 'wifi', 'kebersihan', 'perbaikan', 'gaji', 'modal', 'lainnya']);
 
 // ── Users ───────────────────────────────────────
 export const loginSchema = z.object({

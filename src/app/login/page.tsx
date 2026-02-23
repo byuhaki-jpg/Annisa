@@ -238,7 +238,7 @@ export default function LoginPage() {
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/90 shadow-lg shadow-blue-500/25 mb-4 p-2">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/logo.png" alt="Kos Annisa" className="w-full h-full object-contain" />
+                        <img src="https://blogger.googleusercontent.com/img/a/AVvXsEiPO3Ehdp9v2r7JuQM9VTvIKbpwCv316_f7uxT_fS_3HR-ef7RFBDO2s1XX0H8DJM-urPA8HHFcRDakcxyIgQ21qKqlgATWhipN5IxJiMrEZO-JAOUXeoeZ26xp4Y3pkt8AUM-Hd4YCA5SLq7N7JkPQ8W6WnR2kcfbVLMlKOryK2dYihdQOMjgoTgXTT_YS" alt="Kos Annisa" className="w-full h-full object-contain" />
                     </div>
                     <h1 className="text-3xl font-bold text-white tracking-tight">
                         Kost Annisa

@@ -29,7 +29,7 @@ export function Sidebar() {
         <div className="hidden md:flex bg-slate-900 border-r text-slate-100 flex-col w-64 h-full shrink-0">
             <div className="p-5 flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="Kos Annisa" className="w-10 h-10 rounded-lg object-contain bg-white/10 p-0.5" />
+                <img src="https://blogger.googleusercontent.com/img/a/AVvXsEiPO3Ehdp9v2r7JuQM9VTvIKbpwCv316_f7uxT_fS_3HR-ef7RFBDO2s1XX0H8DJM-urPA8HHFcRDakcxyIgQ21qKqlgATWhipN5IxJiMrEZO-JAOUXeoeZ26xp4Y3pkt8AUM-Hd4YCA5SLq7N7JkPQ8W6WnR2kcfbVLMlKOryK2dYihdQOMjgoTgXTT_YS" alt="Kos Annisa" className="w-10 h-10 rounded-lg object-contain bg-white/10 p-0.5" />
                 <h1 className="text-xl font-bold tracking-tight text-white">Kost Annisa</h1>
             </div>
             <nav className="flex-1 px-4 space-y-1">

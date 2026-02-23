@@ -54,7 +54,7 @@ export function Topbar() {
             <div className="flex items-center gap-2 md:gap-4">
                 {/* Mobile app title */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="Kos Annisa" className="md:hidden w-7 h-7 rounded object-contain" />
+                <img src="https://blogger.googleusercontent.com/img/a/AVvXsEiPO3Ehdp9v2r7JuQM9VTvIKbpwCv316_f7uxT_fS_3HR-ef7RFBDO2s1XX0H8DJM-urPA8HHFcRDakcxyIgQ21qKqlgATWhipN5IxJiMrEZO-JAOUXeoeZ26xp4Y3pkt8AUM-Hd4YCA5SLq7N7JkPQ8W6WnR2kcfbVLMlKOryK2dYihdQOMjgoTgXTT_YS" alt="Kos Annisa" className="md:hidden w-7 h-7 rounded object-contain" />
                 <span className="md:hidden text-sm font-bold text-slate-800 tracking-tight">Kost Annisa</span>
 
                 {showMonthPicker && (

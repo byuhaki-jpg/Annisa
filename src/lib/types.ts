@@ -31,7 +31,7 @@ export type Invoice = {
     notes?: string;
 };
 
-export type ExpenseCategory = 'listrik' | 'air' | 'wifi' | 'kebersihan' | 'perbaikan' | 'lainnya';
+export type ExpenseCategory = 'listrik' | 'air' | 'wifi' | 'kebersihan' | 'perbaikan' | 'gaji' | 'modal' | 'lainnya';
 
 export type Expense = {
     id: string;

@@ -37,6 +37,7 @@ const CATEGORY_LABELS: Record<string, string> = {
     wifi: "WiFi / Internet",
     kebersihan: "Kebersihan",
     perbaikan: "Perbaikan",
+    gaji: "Gaji Karyawan",
     modal: "Modal Kas",
     lainnya: "Lainnya",
 };
@@ -577,6 +578,7 @@ export default function ExpensesPage() {
                                                     <SelectItem value="wifi">WiFi / Internet</SelectItem>
                                                     <SelectItem value="kebersihan">Kebersihan</SelectItem>
                                                     <SelectItem value="perbaikan">Perbaikan</SelectItem>
+                                                    <SelectItem value="gaji">Gaji Karyawan</SelectItem>
                                                     <SelectItem value="lainnya">Lainnya</SelectItem>
                                                 </SelectContent>
                                             </Select>
