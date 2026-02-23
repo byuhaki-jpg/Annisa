@@ -236,8 +236,9 @@ export default function LoginPage() {
             <div className="relative z-10 w-full max-w-md mx-4">
                 {/* Logo / Brand */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/25 mb-4">
-                        <Building2 className="w-8 h-8 text-white" />
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/90 shadow-lg shadow-blue-500/25 mb-4 p-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/logo.png" alt="Kos Annisa" className="w-full h-full object-contain" />
                     </div>
                     <h1 className="text-3xl font-bold text-white tracking-tight">
                         Kost Annisa

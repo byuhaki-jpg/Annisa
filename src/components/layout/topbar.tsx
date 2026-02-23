@@ -53,6 +53,8 @@ export function Topbar() {
             style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}>
             <div className="flex items-center gap-2 md:gap-4">
                 {/* Mobile app title */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="Kos Annisa" className="md:hidden w-7 h-7 rounded object-contain" />
                 <span className="md:hidden text-sm font-bold text-slate-800 tracking-tight">Kost Annisa</span>
 
                 {showMonthPicker && (

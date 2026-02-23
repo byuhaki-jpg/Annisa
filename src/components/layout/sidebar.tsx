@@ -27,8 +27,10 @@ export function Sidebar() {
 
     return (
         <div className="hidden md:flex bg-slate-900 border-r text-slate-100 flex-col w-64 h-full shrink-0">
-            <div className="p-6">
-                <h1 className="text-2xl font-bold tracking-tight text-white">Kost Annisa</h1>
+            <div className="p-5 flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="Kos Annisa" className="w-10 h-10 rounded-lg object-contain bg-white/10 p-0.5" />
+                <h1 className="text-xl font-bold tracking-tight text-white">Kost Annisa</h1>
             </div>
             <nav className="flex-1 px-4 space-y-1">
                 {links.map((item) => {
