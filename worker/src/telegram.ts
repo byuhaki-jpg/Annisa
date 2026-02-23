@@ -251,6 +251,48 @@ async function deletePending(db: D1Database, pendingId: string) {
     await db.prepare(`DELETE FROM kv_store WHERE key = ?`).bind(pendingId).run().catch(() => { });
 }
 
+// ── Edit mode helpers ────────────────────────────
+
+interface EditMode {
+    pendingId: string;
+    field: 'category' | 'amount' | 'notes';
+}
+
+async function storeEditMode(db: D1Database, chatId: number, mode: EditMode) {
+    const key = `editmode_${chatId}`;
+    await db.prepare(
+        `INSERT OR REPLACE INTO kv_store (key, value, expires_at) VALUES (?, ?, datetime('now', '+5 minutes'))`
+    ).bind(key, JSON.stringify(mode)).run().catch(() => { });
+}
+
+async function getEditMode(db: D1Database, chatId: number): Promise<EditMode | null> {
+    const key = `editmode_${chatId}`;
+    const row: any = await db.prepare(
+        `SELECT value FROM kv_store WHERE key = ? AND expires_at > datetime('now')`
+    ).bind(key).first().catch(() => null);
+    if (!row?.value) return null;
+    return JSON.parse(row.value);
+}
+
+async function clearEditMode(db: D1Database, chatId: number) {
+    const key = `editmode_${chatId}`;
+    await db.prepare(`DELETE FROM kv_store WHERE key = ?`).bind(key).run().catch(() => { });
+}
+
+async function updatePendingField(db: D1Database, pendingId: string, field: string, value: any): Promise<ParsedTransaction | null> {
+    const tx = await getPending(db, pendingId);
+    if (!tx) return null;
+    (tx as any)[field] = value;
+    // Rebuild notes if editing notes (clear items since user manually wrote notes)
+    if (field === 'notes') {
+        tx.items = undefined;
+    }
+    await db.prepare(
+        `INSERT OR REPLACE INTO kv_store (key, value, expires_at) VALUES (?, ?, datetime('now', '+10 minutes'))`
+    ).bind(pendingId, JSON.stringify(tx)).run().catch(() => { });
+    return tx;
+}
+
 // ── Main handler ─────────────────────────────────
 
 export async function handleTelegramUpdate(update: any, deps: TelegramDeps) {
@@ -265,6 +307,15 @@ export async function handleTelegramUpdate(update: any, deps: TelegramDeps) {
 
         const chatId = msg.chat.id;
         const text = msg.text || '';
+
+        // Check if user is in edit mode (waiting for typed input)
+        if (text.trim() && !text.startsWith('/')) {
+            const editMode = await getEditMode(deps.db, chatId);
+            if (editMode) {
+                await handleEditInput(chatId, text, editMode, deps);
+                return;
+            }
+        }
 
         // Commands
         if (text.startsWith('/')) {
@@ -573,6 +624,7 @@ async function showConfirmation(chatId: number, tx: ParsedTransaction, pendingId
         inline_keyboard: [
             [
                 { text: '✅ Simpan', callback_data: `save:${pendingId}` },
+                { text: '✏️ Edit', callback_data: `edit:${pendingId}` },
                 { text: '❌ Batal', callback_data: `cancel:${pendingId}` },
             ],
         ],
@@ -586,12 +638,114 @@ async function handleCallback(query: any, deps: TelegramDeps) {
     const messageId = query.message.message_id;
     const data = query.data || '';
 
-    const [action, pendingId] = data.split(':');
+    // Parse callback data — format: action:pendingId or action:pendingId:extra
+    const parts = data.split(':');
+    const action = parts[0];
+    const pendingId = parts[1] || '';
+    const extra = parts[2] || '';
 
     if (action === 'cancel') {
         await deletePending(deps.db, pendingId);
+        await clearEditMode(deps.db, chatId);
         await answerCallback(deps.botToken, query.id, 'Dibatalkan');
         await editMessage(deps.botToken, chatId, messageId, '❌ Transaksi dibatalkan.');
+        return;
+    }
+
+    // ── Edit: show field selection ────────────────
+    if (action === 'edit') {
+        const tx = await getPending(deps.db, pendingId);
+        if (!tx) {
+            await answerCallback(deps.botToken, query.id, 'Data kedaluwarsa');
+            return;
+        }
+        await answerCallback(deps.botToken, query.id);
+        await sendMessage(deps.botToken, chatId, '✏️ <b>Mau edit apa?</b>', {
+            inline_keyboard: [
+                [
+                    { text: '📁 Kategori', callback_data: `ecat:${pendingId}` },
+                    { text: '💰 Jumlah', callback_data: `eamt:${pendingId}` },
+                ],
+                [
+                    { text: '📝 Catatan', callback_data: `enote:${pendingId}` },
+                    { text: '↩️ Kembali', callback_data: `eback:${pendingId}` },
+                ],
+            ],
+        });
+        return;
+    }
+
+    // ── Edit Category: show category buttons ──────
+    if (action === 'ecat') {
+        await answerCallback(deps.botToken, query.id);
+        await sendMessage(deps.botToken, chatId, '📁 <b>Pilih kategori:</b>', {
+            inline_keyboard: [
+                [
+                    { text: '⚡ Listrik', callback_data: `scat:${pendingId}:listrik` },
+                    { text: '💧 Air', callback_data: `scat:${pendingId}:air` },
+                    { text: '📶 WiFi', callback_data: `scat:${pendingId}:wifi` },
+                ],
+                [
+                    { text: '🧹 Kebersihan', callback_data: `scat:${pendingId}:kebersihan` },
+                    { text: '🔧 Perbaikan', callback_data: `scat:${pendingId}:perbaikan` },
+                    { text: '💼 Gaji', callback_data: `scat:${pendingId}:gaji` },
+                ],
+                [
+                    { text: '🏦 Modal', callback_data: `scat:${pendingId}:modal` },
+                    { text: '📦 Lainnya', callback_data: `scat:${pendingId}:lainnya` },
+                ],
+                [
+                    { text: '↩️ Kembali', callback_data: `eback:${pendingId}` },
+                ],
+            ],
+        });
+        return;
+    }
+
+    // ── Set Category (from button click) ──────────
+    if (action === 'scat') {
+        const newCategory = extra;
+        const tx = await updatePendingField(deps.db, pendingId, 'category', newCategory);
+        if (!tx) {
+            await answerCallback(deps.botToken, query.id, 'Data kedaluwarsa');
+            return;
+        }
+        await answerCallback(deps.botToken, query.id, `Kategori → ${newCategory}`);
+        await showConfirmation(chatId, tx, pendingId, deps);
+        return;
+    }
+
+    // ── Edit Amount: ask user to type ─────────────
+    if (action === 'eamt') {
+        await storeEditMode(deps.db, chatId, { pendingId, field: 'amount' });
+        await answerCallback(deps.botToken, query.id);
+        await sendMessage(deps.botToken, chatId,
+            '💰 <b>Ketik jumlah baru:</b>\n\n' +
+            'Contoh: <code>82000</code> atau <code>82rb</code> atau <code>1.5jt</code>'
+        );
+        return;
+    }
+
+    // ── Edit Notes: ask user to type ──────────────
+    if (action === 'enote') {
+        await storeEditMode(deps.db, chatId, { pendingId, field: 'notes' });
+        await answerCallback(deps.botToken, query.id);
+        await sendMessage(deps.botToken, chatId,
+            '📝 <b>Ketik catatan baru:</b>\n\n' +
+            'Contoh: <code>1kg No Drop (Rp 67.000), 3 Serat @Rp 5.000 (Rp 15.000)</code>'
+        );
+        return;
+    }
+
+    // ── Back: re-show confirmation ────────────────
+    if (action === 'eback') {
+        const tx = await getPending(deps.db, pendingId);
+        if (!tx) {
+            await answerCallback(deps.botToken, query.id, 'Data kedaluwarsa');
+            return;
+        }
+        await answerCallback(deps.botToken, query.id);
+        await showConfirmation(chatId, tx, pendingId, deps);
         return;
     }
 
@@ -623,6 +777,7 @@ async function handleCallback(query: any, deps: TelegramDeps) {
         }
 
         await deletePending(deps.db, pendingId);
+        await clearEditMode(deps.db, chatId);
         await answerCallback(deps.botToken, query.id, '✅ Tersimpan!');
 
         const typeLabel = tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
@@ -642,4 +797,31 @@ async function handleCallback(query: any, deps: TelegramDeps) {
         savedMsg += `🆔 ${expId}`;
         await editMessage(deps.botToken, chatId, messageId, savedMsg);
     }
+}
+
+// ── Handle edit input (user typed new value) ─────
+
+async function handleEditInput(chatId: number, text: string, editMode: EditMode, deps: TelegramDeps) {
+    await clearEditMode(deps.db, chatId);
+
+    let value: any = text.trim();
+
+    if (editMode.field === 'amount') {
+        value = parseAmountString(value);
+        if (value <= 0) {
+            await sendMessage(deps.botToken, chatId, '❌ Jumlah tidak valid. Coba lagi: <code>82000</code> atau <code>82rb</code>');
+            await storeEditMode(deps.db, chatId, editMode); // re-enter edit mode
+            return;
+        }
+    }
+
+    const tx = await updatePendingField(deps.db, editMode.pendingId, editMode.field, value);
+    if (!tx) {
+        await sendMessage(deps.botToken, chatId, '⏰ Data sudah kedaluwarsa. Silakan input ulang.');
+        return;
+    }
+
+    const fieldLabel = editMode.field === 'category' ? 'Kategori' : editMode.field === 'amount' ? 'Jumlah' : 'Catatan';
+    await sendMessage(deps.botToken, chatId, `✅ ${fieldLabel} berhasil diubah!`);
+    await showConfirmation(chatId, tx, editMode.pendingId, deps);
 }
