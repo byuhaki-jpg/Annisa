@@ -9,6 +9,7 @@ import { authMiddleware, requireRole, hashPassword, type AuthUser, type AuthRole
 import { sign } from 'hono/jwt';
 import { sendResetPasswordEmail } from './email';
 import { handleTelegramUpdate, analyzeReceiptImage } from './telegram';
+import { shortenUrl, resolveShortCode } from './shortener';
 import {
     getAllRooms,
     getAllTenants,
@@ -79,6 +80,14 @@ app.use(
         maxAge: 86400,
     })
 );
+
+// ── Short Link Redirect (no auth) ────────────────
+app.get('/s/:code', async (c) => {
+    const code = c.req.param('code');
+    const url = await resolveShortCode(c.env.DB, code);
+    if (!url) return c.text('Link tidak ditemukan', 404);
+    return c.redirect(url, 302);
+});
 
 // ── Health (no auth) ─────────────────────────────
 app.get('/api/health', (c) => {
@@ -726,8 +735,11 @@ app.post('/api/expenses', async (c) => {
             const settings = await getSettings(c.env.DB, pid(c));
             const sheetsConfig = getSheetsConfig(settings, c.env);
             if (sheetsConfig) {
-                const receiptUrl = d.receipt_key
+                const longReceiptUrl = d.receipt_key
                     ? `${new URL(c.req.url).origin}/api/uploads/${encodeURIComponent(d.receipt_key)}`
+                    : undefined;
+                const receiptUrl = longReceiptUrl
+                    ? await shortenUrl(c.env.DB, longReceiptUrl)
                     : undefined;
                 await appendCashflowRow(sheetsConfig, {
                     date: d.expense_date,
@@ -793,8 +805,11 @@ app.post('/api/expenses/confirm/:id', async (c) => {
         if (sheetsConfig) {
             const updated = await queryOne<any>(c.env.DB, 'SELECT * FROM expenses WHERE id = ?', expenseId);
             if (updated) {
-                const receiptUrl = updated.receipt_key
+                const longReceiptUrl = updated.receipt_key
                     ? `${new URL(c.req.url).origin}/api/uploads/${encodeURIComponent(updated.receipt_key)}`
+                    : undefined;
+                const receiptUrl = longReceiptUrl
+                    ? await shortenUrl(c.env.DB, longReceiptUrl)
                     : undefined;
                 await appendCashflowRow(sheetsConfig, {
                     date: updated.expense_date,
