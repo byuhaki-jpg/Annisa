@@ -82,6 +82,21 @@ app.use(
 );
 
 // ── Short Link Redirect (no auth) ────────────────
+// Handle s.kosannisa.my.id/:code (root path on shortlink domain)
+app.use('*', async (c, next) => {
+    const host = new URL(c.req.url).hostname;
+    if (host === 's.kosannisa.my.id') {
+        const path = new URL(c.req.url).pathname.replace(/^\//, '');
+        if (path && !path.includes('/')) {
+            const url = await resolveShortCode(c.env.DB, path);
+            if (url) return c.redirect(url, 302);
+            return c.text('Link tidak ditemukan', 404);
+        }
+    }
+    await next();
+});
+
+// Also handle /s/:code path (for api.kosannisa.my.id/s/code)
 app.get('/s/:code', async (c) => {
     const code = c.req.param('code');
     const url = await resolveShortCode(c.env.DB, code);
