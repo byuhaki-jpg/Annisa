@@ -64,14 +64,27 @@ async function editMessage(token: string, chatId: number, messageId: number, tex
 
 // ── AI helpers (Groq primary, Gemini fallback) ───
 
-const RECEIPT_PROMPT = `Kamu adalah asisten keuangan kos-kosan di Indonesia. Analisa foto nota/struk/kwitansi ini dan ekstrak informasi berikut dalam format JSON:
+const RECEIPT_PROMPT = `Kamu adalah asisten keuangan kos-kosan di Indonesia. Analisa foto nota/struk/kwitansi ini dan ekstrak SEMUA item yang tertulis di nota.
+
+Kembalikan dalam format JSON:
 {
   "type": "expense" atau "income",
   "category": salah satu dari: listrik, air, wifi, kebersihan, perbaikan, gaji, modal, lainnya,
-  "amount": angka tanpa titik/koma (contoh: 150000),
-  "notes": deskripsi singkat dari nota,
+  "amount": total keseluruhan (angka tanpa titik/koma, contoh: 150000),
+  "store": nama toko/penjual (jika terlihat),
+  "date": tanggal di nota format YYYY-MM-DD (jika terlihat),
+  "items": [
+    { "name": "nama barang", "qty": jumlah, "unit": "satuan (kg/pcs/ltr/dll)", "price": harga satuan, "subtotal": harga total item }
+  ],
   "confidence": "high" atau "low"
 }
+
+PENTING:
+- Tulis SEMUA item yang ada di nota, jangan diringkas
+- Jika harga satuan tidak tertulis tapi subtotal ada, isi price = subtotal / qty
+- Jika hanya ada 1 item tanpa qty, isi qty = 1
+- Pastikan jumlah semua subtotal = amount (total)
+
 Jika tidak bisa membaca nota, kembalikan: {"error": "Tidak bisa membaca nota"}
 Jawab HANYA dengan JSON, tanpa teks lain.`;
 
@@ -93,12 +106,37 @@ function extractTransaction(responseText: string, originalText?: string): Parsed
     if (!jsonMatch) throw new Error('AI tidak bisa membaca');
     const parsed = JSON.parse(jsonMatch[0]);
     if (parsed.error) throw new Error(parsed.error);
+
+    // Build detailed notes from items array
+    let notes = parsed.notes || originalText || '';
+    const items: ReceiptItem[] = [];
+
+    if (Array.isArray(parsed.items) && parsed.items.length > 0) {
+        for (const item of parsed.items) {
+            items.push({
+                name: item.name || 'Item',
+                qty: Number(item.qty) || 1,
+                unit: item.unit || 'pcs',
+                price: Number(item.price) || 0,
+                subtotal: Number(item.subtotal) || Number(item.price) || 0,
+            });
+        }
+        // Build notes from items: "1kg No Drop (Rp 67.000), 3 Serat @Rp 5.000 (Rp 15.000)"
+        notes = items.map(i => {
+            const qtyStr = i.qty > 1 ? `${i.qty}${i.unit !== 'pcs' ? i.unit : 'x'}` : '';
+            const priceStr = i.qty > 1 ? ` @Rp ${i.price.toLocaleString('id-ID')}` : '';
+            return `${qtyStr} ${i.name}${priceStr} (Rp ${i.subtotal.toLocaleString('id-ID')})`;
+        }).join(', ').trim();
+    }
+
     return {
         type: parsed.type === 'income' ? 'income' : 'expense',
         category: parsed.category || 'lainnya',
         amount: Number(parsed.amount) || 0,
-        notes: parsed.notes || originalText || '',
+        notes,
         confidence: parsed.confidence || 'low',
+        items: items.length > 0 ? items : undefined,
+        store: parsed.store || undefined,
     };
 }
 
@@ -148,12 +186,22 @@ async function analyzeWithGroqVision(apiKey: string, imageBase64: string): Promi
     return extractTransaction(content);
 }
 
+export interface ReceiptItem {
+    name: string;
+    qty: number;
+    unit: string;
+    price: number;
+    subtotal: number;
+}
+
 export interface ParsedTransaction {
     type: 'expense' | 'income';
     category: string;
     amount: number;
     notes: string;
     confidence?: string;
+    items?: ReceiptItem[];
+    store?: string;
 }
 
 export async function analyzeReceiptImage(groqKey: string, imageBase64: string): Promise<ParsedTransaction> {
@@ -492,13 +540,34 @@ async function showConfirmation(chatId: number, tx: ParsedTransaction, pendingId
     const typeLabel = tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
     const confidenceNote = tx.confidence === 'low' ? '\n⚠️ <i>Confidence rendah, periksa data</i>' : '';
 
-    const msg =
+    let msg =
         `${typeEmoji} <b>Transaksi Terdeteksi</b>\n\n` +
         `📋 Jenis: <b>${typeLabel}</b>\n` +
-        `📁 Kategori: <b>${tx.category}</b>\n` +
-        `💰 Jumlah: <b>Rp ${tx.amount.toLocaleString('id-ID')}</b>\n` +
-        `📝 Catatan: ${tx.notes}${confidenceNote}\n\n` +
-        `Simpan transaksi ini?`;
+        `📁 Kategori: <b>${tx.category}</b>\n`;
+
+    if (tx.store) {
+        msg += `🏪 Toko: <b>${tx.store}</b>\n`;
+    }
+
+    msg += `💰 Total: <b>Rp ${tx.amount.toLocaleString('id-ID')}</b>\n`;
+
+    // Show itemized breakdown if available
+    if (tx.items && tx.items.length > 0) {
+        msg += `\n📦 <b>Rincian:</b>\n`;
+        for (const item of tx.items) {
+            const qtyStr = item.qty > 1
+                ? `${item.qty}${item.unit !== 'pcs' ? ' ' + item.unit : 'x'}`
+                : '';
+            const priceStr = item.qty > 1
+                ? ` @Rp ${item.price.toLocaleString('id-ID')}`
+                : '';
+            msg += `  • ${qtyStr} ${item.name}${priceStr} — <b>Rp ${item.subtotal.toLocaleString('id-ID')}</b>\n`;
+        }
+    } else {
+        msg += `📝 Catatan: ${tx.notes}\n`;
+    }
+
+    msg += `${confidenceNote}\n\nSimpan transaksi ini?`;
 
     await sendMessage(deps.botToken, chatId, msg, {
         inline_keyboard: [
@@ -557,12 +626,20 @@ async function handleCallback(query: any, deps: TelegramDeps) {
         await answerCallback(deps.botToken, query.id, '✅ Tersimpan!');
 
         const typeLabel = tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
-        await editMessage(deps.botToken, chatId, messageId,
+        let savedMsg =
             `✅ <b>Tersimpan!</b>\n\n` +
-            `📋 ${typeLabel} — ${tx.category}\n` +
-            `💰 Rp ${tx.amount.toLocaleString('id-ID')}\n` +
-            `📝 ${tx.notes}\n` +
-            `🆔 ${expId}`
-        );
+            `📋 ${typeLabel} — ${tx.category}\n`;
+        if (tx.store) savedMsg += `🏪 ${tx.store}\n`;
+        savedMsg += `💰 Rp ${tx.amount.toLocaleString('id-ID')}\n`;
+        if (tx.items && tx.items.length > 0) {
+            for (const item of tx.items) {
+                const qtyStr = item.qty > 1 ? `${item.qty}${item.unit !== 'pcs' ? ' ' + item.unit : 'x'} ` : '';
+                savedMsg += `  • ${qtyStr}${item.name} — Rp ${item.subtotal.toLocaleString('id-ID')}\n`;
+            }
+        } else {
+            savedMsg += `📝 ${tx.notes}\n`;
+        }
+        savedMsg += `🆔 ${expId}`;
+        await editMessage(deps.botToken, chatId, messageId, savedMsg);
     }
 }
