@@ -67,16 +67,24 @@ app.use(
     '/api/*',
     cors({
         origin: (origin, c) => {
+            // Allow native app WebViews (Capacitor) which may send null/undefined origin
+            if (!origin) return '*';
             const allowed = (c.env.APP_ORIGINS || 'http://localhost:3000')
                 .split(',')
                 .map((s: string) => s.trim());
-            if (allowed.includes(origin) || allowed.includes('*')) return origin || '*';
+            if (allowed.includes(origin) || allowed.includes('*')) return origin;
+            // Allow any localhost origin (Capacitor uses http/https/capacitor schemes)
+            try {
+                const url = new URL(origin);
+                if (url.hostname === 'localhost') return origin;
+            } catch { }
             // Allow Cloudflare preview domains
-            if (origin && origin.endsWith('.pages.dev')) return origin;
+            if (origin.endsWith('.pages.dev')) return origin;
             return '';
         },
         allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization', 'X-Mock-Email', 'Cf-Access-Authenticated-User-Email', 'X-Filename'],
+        credentials: true,
         maxAge: 86400,
     })
 );
